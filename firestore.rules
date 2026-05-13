@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isChatParticipant(chatId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid);
+
+      // Allow the owner to create/update their profile document.
+      // Avoid strict field-type checks here because the app uses `set(..., merge: true)`
+      // and request.resource.data may not include every field during rule evaluation.
+      allow create, update: if isSelf(uid);
+
+      match /contacts/{contactId} {
+        allow read, write: if isSelf(uid);
+      }
+
+      match /calls/{callId} {
+        allow read, write: if isSelf(uid);
+      }
+    }
+
+    match /phoneIndex/{phoneNumber} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /chats/{chatId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
+      allow create: if signedIn() && request.auth.uid in request.resource.data.participantIds;
+      allow update: if signedIn() && request.auth.uid in resource.data.participantIds;
+
+      match /messages/{messageId} {
+        allow read: if isChatParticipant(chatId);
+        allow create: if isChatParticipant(chatId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.imageUrls.size() <= 5;
+        allow update: if isChatParticipant(chatId);
+        allow delete: if false;
+      }
+    }
+  }
+}

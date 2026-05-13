@@ -1,0 +1,176 @@
+{
+  "project": "echo_me",
+  "lastUpdated": "2026-05-13",
+  "firestore": {
+    "collections": {
+      "users": {
+        "{uid}": {
+          "fields": {
+            "uid": "string",
+            "phoneNumber": "string, E.164 format like +911234567890",
+            "email": "string|null",
+            "profileImageUrl": "string|null, can be https URL or data:image/jpeg;base64 payload",
+            "fcmToken": "string|null",
+            "isOnline": "boolean",
+            "activeChatId": "string|null",
+            "lastSeen": "timestamp|null",
+            "createdAt": "timestamp",
+            "updatedAt": "timestamp"
+          },
+          "subcollections": {
+            "contacts": {
+              "{normalizedPhone10}": {
+                "fields": {
+                  "displayName": "string, fallback Unknown Contact",
+                  "normalizedPhone": "string, 10 digit Indian phone number",
+                  "registeredUserId": "string|null, uid when contact is registered",
+                  "canCall": "boolean",
+                  "syncedAt": "timestamp"
+                }
+              }
+            },
+            "calls": {
+              "{callId}": {
+                "fields": {
+                  "peerUserId": "string",
+                  "peerPhoneNumber": "string",
+                  "direction": "outgoing|incoming|missed",
+                  "type": "voice|video",
+                  "startedAt": "timestamp",
+                  "durationSeconds": "number|null"
+                }
+              }
+            }
+          }
+        }
+      },
+      "phoneIndex": {
+        "{phoneNumber}": {
+          "notes": [
+            "Documents may exist as +91XXXXXXXXXX and XXXXXXXXXX.",
+            "Contact sync checks both formats so registered users appear as Chat Now."
+          ],
+          "fields": {
+            "uid": "string",
+            "phoneNumber": "string, canonical auth phone number",
+            "canCall": "boolean",
+            "updatedAt": "timestamp"
+          },
+          "exampleDocuments": {
+            "+911234567890": {
+              "uid": "8pIVVr5QHLqeHvATNTIFvxoqO333",
+              "phoneNumber": "+911234567890",
+              "canCall": true,
+              "updatedAt": "timestamp"
+            },
+            "1234567890": {
+              "uid": "8pIVVr5QHLqeHvATNTIFvxoqO333",
+              "phoneNumber": "+911234567890",
+              "canCall": true,
+              "updatedAt": "timestamp"
+            }
+          }
+        }
+      },
+      "chats": {
+        "{sortedUidA_sortedUidB}": {
+          "fields": {
+            "participantIds": "array<string>",
+            "participantNames": "map<uid, display name or phone>",
+            "participantPhones": "map<uid, phone number>",
+            "typing": "map<uid, boolean>",
+            "typingUpdatedAt": "map<uid, timestamp>",
+            "lastMessage": "map|null",
+            "updatedAt": "timestamp",
+            "unreadCounts": "map<uid, number>"
+          },
+          "subcollections": {
+            "messages": {
+              "{messageId}": {
+                "fields": {
+                  "chatId": "string",
+                  "senderId": "string",
+                  "text": "string|null",
+                  "imageUrls": "array<string>, legacy only",
+                  "attachments": [
+                    {
+                      "id": "string",
+                      "fileName": "string",
+                      "contentType": "image/jpeg|application/pdf",
+                      "sizeBytes": "number",
+                      "compressed": "boolean",
+                      "chunkCount": "number"
+                    }
+                  ],
+                  "type": "text|image|pdf",
+                  "state": "sending|sent|delivered|read|failed",
+                  "deliveredAt": "timestamp|null",
+                  "readAt": "timestamp|null",
+                  "createdAt": "timestamp"
+                },
+                "subcollections": {
+                  "chunks": {
+                    "{attachmentId}_{index}": {
+                      "notes": [
+                        "Base64 attachment payloads are split because Firestore documents cannot hold a full 10 MB file safely.",
+                        "Receiver orders chunks by index, combines data, then decodes base64.",
+                        "PDF chunks may contain gzip-compressed bytes when compressed is true."
+                      ],
+                      "fields": {
+                        "attachmentId": "string",
+                        "index": "number",
+                        "data": "string, base64 segment"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "notificationRequests": {
+        "{requestId}": {
+          "notes": [
+            "Created by the app when the receiver is offline.",
+            "A Firebase Cloud Function should listen for pending documents and send FCM with the stored token, then mark status as sent or failed."
+          ],
+          "fields": {
+            "recipientUserId": "string",
+            "senderUserId": "string",
+            "senderName": "string",
+            "chatId": "string",
+            "messageId": "string",
+            "title": "string",
+            "body": "string",
+            "fcmToken": "string",
+            "status": "pending|sent|failed",
+            "createdAt": "timestamp",
+            "sentAt": "timestamp|null",
+            "error": "string|null"
+          }
+        }
+      }
+    }
+  },
+  "localSqlite": {
+    "contacts": {
+      "id": "string primary key, normalized phone",
+      "displayName": "string",
+      "normalizedPhone": "string",
+      "registeredUserId": "string|null",
+      "canCall": "integer boolean",
+      "syncedAt": "integer millisecondsSinceEpoch"
+    },
+    "messages": {
+      "id": "string primary key",
+      "chatId": "string",
+      "senderId": "string",
+      "text": "string|null",
+      "imageUrls": "string pipe-separated urls, legacy only",
+      "type": "text|image|pdf",
+      "state": "sending|sent|delivered|read|failed",
+      "createdAt": "integer millisecondsSinceEpoch"
+    }
+  }
+}

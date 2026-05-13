@@ -1,0 +1,218 @@
+import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/theme/app_theme.dart';
+import 'package:echo_me/core/widgets/app_card.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      children: [
+        AppCard(
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                foregroundColor: Theme.of(
+                  context,
+                ).colorScheme.onPrimaryContainer,
+                child: const Icon(Icons.palette_outlined),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Theme',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Persisted locally on this device',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        _ThemeOption(
+          title: 'Light',
+          icon: Icons.light_mode_outlined,
+          value: AppThemeMode.light,
+          groupValue: mode,
+        ),
+        _ThemeOption(
+          title: 'Dark',
+          icon: Icons.dark_mode_outlined,
+          value: AppThemeMode.dark,
+          groupValue: mode,
+        ),
+        _ThemeOption(
+          title: 'Elite',
+          icon: Icons.workspace_premium_outlined,
+          value: AppThemeMode.elite,
+          groupValue: mode,
+        ),
+        const SizedBox(height: 14),
+        AppCard(
+          onTap: () => _confirmSignOut(context, ref),
+          padding: EdgeInsets.zero,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                  child: const Icon(Icons.logout),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Logout',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Clear local data on this device',
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          icon: const Icon(Icons.logout),
+          title: const Text('Logout?'),
+          content: const Text(
+            'Do you want to logout? This will remove your local contacts and messages from this device.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(Icons.logout),
+              label: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true) return;
+
+    try {
+      await ref
+          .read(authRepositoryProvider)
+          .signOut()
+          .timeout(const Duration(seconds: 20));
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logout failed: $error')),
+        );
+      }
+    }
+  }
+}
+
+class _ThemeOption extends ConsumerWidget {
+  final String title;
+  final IconData icon;
+  final AppThemeMode value;
+  final AppThemeMode groupValue;
+
+  const _ThemeOption({
+    required this.title,
+    required this.icon,
+    required this.value,
+    required this.groupValue,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = value == groupValue;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        onTap: () => ref.read(themeModeProvider.notifier).setTheme(value),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: selected ? Theme.of(context).colorScheme.primary : null,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: selected
+                  ? Icon(
+                      Icons.check_circle,
+                      key: ValueKey(title),
+                      color: Theme.of(context).colorScheme.primary,
+                    )
+                  : Icon(Icons.circle_outlined, key: ValueKey('$title-off')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

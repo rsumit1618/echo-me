@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "395070756993",
+    "firebase_url": "https://echo-me-fe509-default-rtdb.firebaseio.com",
+    "project_id": "echo-me-fe509",
+    "storage_bucket": "echo-me-fe509.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:395070756993:android:9611971b824cac4b23d580",
+        "android_client_info": {
+          "package_name": "com.sr.echo_me"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1RjspMP_yktpbQwPC80mKnVxKyjfOSO0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
