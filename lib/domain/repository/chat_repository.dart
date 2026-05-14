@@ -19,6 +19,7 @@ abstract class ChatRepository {
     String peerUserId, {
     String? peerDisplayName,
     String? peerPhoneNumber,
+    String? peerProfileImageUrl,
   });
   Future<void> sendTextMessage(String chatId, String text);
   Future<void> sendImageMessage(String chatId, List<File> images);

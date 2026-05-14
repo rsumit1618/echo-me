@@ -31,20 +31,13 @@ class EchoMeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
+    final theme = AppTheme.fromMode(mode);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Echo Me',
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: switch (mode) {
-        AppThemeMode.light => ThemeMode.light,
-        AppThemeMode.dark => ThemeMode.dark,
-        AppThemeMode.elite => ThemeMode.dark,
-      },
-      builder: (context, child) => Theme(
-        data: mode == AppThemeMode.elite ? AppTheme.elite() : Theme.of(context),
-        child: child!,
-      ),
+      theme: theme,
+      darkTheme: theme,
+      themeMode: ThemeMode.light,
       home: const AuthGate(),
     );
   }

@@ -33,18 +33,17 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   bool _sending = false;
   bool _loadingOlder = false;
   bool _hasMoreOlder = true;
+  String? _latestMessageId;
   final List<Message> _olderMessages = [];
 
   @override
   void initState() {
     super.initState();
     _text.addListener(_onTextChanged);
-    Future.microtask(
-      () async {
-        await ref.read(chatRepositoryProvider).setActiveChat(widget.chatId);
-        await ref.read(chatRepositoryProvider).markRead(widget.chatId);
-      },
-    );
+    Future.microtask(() async {
+      await ref.read(chatRepositoryProvider).setActiveChat(widget.chatId);
+      await ref.read(chatRepositoryProvider).markRead(widget.chatId);
+    });
   }
 
   @override
@@ -76,7 +75,8 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
             child: messages.when(
               data: (items) {
                 Future.microtask(
-                  () => ref.read(chatRepositoryProvider).markRead(widget.chatId),
+                  () =>
+                      ref.read(chatRepositoryProvider).markRead(widget.chatId),
                 );
                 final allMessages = [
                   ...items,
@@ -84,6 +84,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                     (older) => !items.any((item) => item.id == older.id),
                   ),
                 ];
+                _scheduleScrollForNewMessage(items);
                 return allMessages.isEmpty
                     ? const EmptyStateCard(
                         icon: Icons.waving_hand_outlined,
@@ -93,6 +94,12 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                     : ListView.builder(
                         reverse: true,
                         controller: _scrollController,
+                        physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        ),
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        cacheExtent: 640,
                         padding: const EdgeInsets.all(12),
                         itemCount: allMessages.length + 1,
                         itemBuilder: (_, index) {
@@ -157,7 +164,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                           : IconButton(
                               tooltip: 'Send',
                               onPressed: _sendText,
-                              icon: const Icon(Icons.send),
+                              icon: const Icon(Icons.send_rounded),
                             ),
                     ),
                   ],
@@ -167,6 +174,35 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _scheduleScrollForNewMessage(List<Message> messages) {
+    if (messages.isEmpty) return;
+
+    final newest = messages.first;
+    if (_latestMessageId == newest.id) return;
+
+    final hadMessages = _latestMessageId != null;
+    _latestMessageId = newest.id;
+    if (!hadMessages) return;
+
+    final currentUid = ref.read(authRepositoryProvider).firebaseUser?.uid;
+    final isMine = newest.senderId == currentUid;
+    final isNearLatest =
+        !_scrollController.hasClients ||
+        _scrollController.position.pixels < 160;
+    if (!isMine && !isNearLatest) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToLatest());
+  }
+
+  Future<void> _scrollToLatest() async {
+    if (!mounted || !_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      _scrollController.position.minScrollExtent,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -242,8 +278,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf_outlined),
                 title: const Text('PDF'),
-                onTap: () =>
-                    Navigator.of(context).pop(_AttachmentPickType.pdf),
+                onTap: () => Navigator.of(context).pop(_AttachmentPickType.pdf),
               ),
             ],
           ),
@@ -260,10 +295,10 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
 
     setState(() => _sending = true);
     try {
-      await ref.read(chatRepositoryProvider).sendFilesMessage(
-            widget.chatId,
-            files,
-          ).timeout(const Duration(seconds: 45));
+      await ref
+          .read(chatRepositoryProvider)
+          .sendFilesMessage(widget.chatId, files)
+          .timeout(const Duration(seconds: 45));
     } catch (error) {
       _showError(error);
     } finally {
@@ -307,11 +342,13 @@ class _ChatTitle extends ConsumerWidget {
       return const Text('Chat');
     }
 
-    final title = chat!.participantNames[peerId] ??
+    final title =
+        chat!.participantNames[peerId] ??
         chat!.participantPhones[peerId] ??
         'Unknown Contact';
     final status = ref.watch(userStatusProvider(peerId));
-    final isTyping = chat!.participantIds.contains(peerId) &&
+    final isTyping =
+        chat!.participantIds.contains(peerId) &&
         (chat!.typing[peerId] ?? false);
 
     return status.when(
@@ -327,8 +364,8 @@ class _ChatTitle extends ConsumerWidget {
               isTyping
                   ? 'typing...'
                   : isOnline
-                      ? 'online'
-                      : _lastSeenText(lastSeen),
+                  ? 'online'
+                  : _lastSeenText(lastSeen),
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ],
@@ -365,11 +402,14 @@ class _MessageBubble extends ConsumerWidget {
     final isMe = currentUid == message.senderId;
     final colorScheme = Theme.of(context).colorScheme;
     final bubbleColor = isMe
-        ? const Color(0xFFB8F6C8)
-        : colorScheme.brightness == Brightness.dark
-            ? colorScheme.surfaceContainerHighest
-            : const Color(0xFFEFEFEF);
-    final textColor = isMe ? Colors.black87 : colorScheme.onSurface;
+        ? colorScheme.primaryContainer
+        : colorScheme.surfaceContainerHighest;
+    final textColor = isMe
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurfaceVariant;
+    final receiptColor = message.state == MessageState.read
+        ? colorScheme.primary
+        : textColor.withValues(alpha: .65);
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
@@ -397,6 +437,22 @@ class _MessageBubble extends ConsumerWidget {
                 bottomLeft: Radius.circular(isMe ? 18 : 4),
                 bottomRight: Radius.circular(isMe ? 4 : 18),
               ),
+              border: Border.all(
+                color: isMe
+                    ? colorScheme.primary.withValues(alpha: .18)
+                    : colorScheme.outlineVariant.withValues(alpha: .45),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? .16
+                        : .08,
+                  ),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 10, 6),
@@ -429,16 +485,16 @@ class _MessageBubble extends ConsumerWidget {
                         Text(
                           DateFormat.Hm().format(message.createdAt),
                           style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: textColor.withValues(alpha: .7)),
+                              ?.copyWith(
+                                color: textColor.withValues(alpha: .7),
+                              ),
                         ),
                         if (isMe) ...[
                           const SizedBox(width: 4),
                           Icon(
                             _stateIcon(message.state),
                             size: 15,
-                            color: message.state == MessageState.read
-                                ? Colors.blue
-                                : textColor.withValues(alpha: .65),
+                            color: receiptColor,
                           ),
                         ],
                       ],
@@ -507,11 +563,12 @@ class _AttachmentPreview extends StatelessWidget {
     if (attachment.isImage && base64Data != null) {
       try {
         final bytes = base64Decode(base64Data);
+        final bytesUint8 = Uint8List.fromList(bytes);
         return GestureDetector(
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => _FullImageScreen(
-                bytes: bytes,
+                bytes: bytesUint8,
                 title: attachment.fileName,
               ),
             ),
@@ -526,9 +583,8 @@ class _AttachmentPreview extends StatelessWidget {
                 height: 220,
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => _AttachmentError(
-                  label: attachment.fileName,
-                ),
+                errorBuilder: (_, __, ___) =>
+                    _AttachmentError(label: attachment.fileName),
               ),
             ),
           ),
@@ -593,7 +649,7 @@ class _AttachmentError extends StatelessWidget {
 }
 
 class _FullImageScreen extends StatelessWidget {
-  final List<int> bytes;
+  final Uint8List bytes;
   final String title;
 
   const _FullImageScreen({required this.bytes, required this.title});
@@ -676,89 +732,14 @@ class _PdfAttachmentPreview extends StatelessWidget {
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/${attachment.fileName}');
       await file.writeAsBytes(bytes, flush: true);
-      await const MethodChannel('echo_me/attachments').invokeMethod<void>(
-        'openFile',
-        file.path,
-      );
+      await const MethodChannel(
+        'echo_me/attachments',
+      ).invokeMethod<void>('openFile', file.path);
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open PDF: $error')),
-        );
-      }
-    }
-  }
-
-  String _formatBytes(int bytes) {
-    if (bytes >= 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    if (bytes >= 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
-    return '$bytes B';
-  }
-}
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: base64Data == null ? null : () => _openPdf(context, attachment),
-      child: Container(
-        width: 250,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.picture_as_pdf, size: 34),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    attachment.fileName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  Text(_formatBytes(attachment.sizeBytes)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openPdf(
-    BuildContext context,
-    MessageAttachment attachment,
-  ) async {
-    try {
-      final base64Data = attachment.base64Data;
-      if (base64Data == null) return;
-
-      List<int> bytes = base64Decode(base64Data);
-      if (attachment.isPdf && attachment.compressed) {
-        bytes = gzip.decode(bytes);
-      }
-
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/${attachment.fileName}');
-      await file.writeAsBytes(bytes, flush: true);
-      await const MethodChannel('echo_me/attachments').invokeMethod<void>(
-        'openFile',
-        file.path,
-      );
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open PDF: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not open PDF: $error')));
       }
     }
   }

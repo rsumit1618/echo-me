@@ -181,23 +181,51 @@ class _ThemeOption extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = value == groupValue;
+    final previewScheme = AppTheme.fromMode(value).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
         onTap: () => ref.read(themeModeProvider.notifier).setTheme(value),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: selected ? Theme.of(context).colorScheme.primary : null,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: selected
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                icon,
+                color: selected
+                    ? Theme.of(context).colorScheme.onPrimaryContainer
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _ThemeSwatch(color: previewScheme.primary),
+                      _ThemeSwatch(color: previewScheme.secondary),
+                      _ThemeSwatch(color: previewScheme.tertiary),
+                      _ThemeSwatch(color: previewScheme.surface),
+                    ],
+                  ),
+                ],
               ),
             ),
             AnimatedSwitcher(
@@ -211,6 +239,28 @@ class _ThemeOption extends ConsumerWidget {
                   : Icon(Icons.circle_outlined, key: ValueKey('$title-off')),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeSwatch extends StatelessWidget {
+  final Color color;
+
+  const _ThemeSwatch({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 22,
+      margin: const EdgeInsets.only(right: 6),
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
         ),
       ),
     );

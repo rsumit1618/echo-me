@@ -14,6 +14,13 @@ class ChatsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final chats = ref.watch(recentChatsProvider);
     final currentUid = ref.watch(authRepositoryProvider).firebaseUser?.uid;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final themeKey = Object.hash(
+      colorScheme.brightness,
+      colorScheme.primary,
+      colorScheme.surface,
+    );
 
     return chats.when(
       data: (items) {
@@ -31,9 +38,11 @@ class ChatsScreen extends ConsumerWidget {
             final chat = items[index];
             final message = chat.lastMessage;
             final peerId = _peerId(chat, currentUid);
+            final imageUrl = chat.participantImageUrls[peerId];
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AnimatedListItem(
+                key: ValueKey('${chat.id}-$themeKey'),
                 index: index,
                 child: AppCard(
                   onTap: () => Navigator.of(context).push(
@@ -43,15 +52,9 @@ class ChatsScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 26,
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primaryContainer,
-                        foregroundColor: Theme.of(
-                          context,
-                        ).colorScheme.onPrimaryContainer,
-                        child: const Icon(Icons.person),
+                      _ChatAvatar(
+                        title: _chatTitle(chat, peerId),
+                        imageUrl: imageUrl,
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -62,20 +65,19 @@ class ChatsScreen extends ConsumerWidget {
                               _chatTitle(chat, peerId),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
+                              style: textTheme.titleMedium?.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               _lastMessageText(message),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                             ),
                           ],
                         ),
@@ -83,13 +85,10 @@ class ChatsScreen extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Text(
                         _chatDate(chat.updatedAt),
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: textTheme.labelMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -138,5 +137,47 @@ class ChatsScreen extends ConsumerWidget {
     if (date == today) return DateFormat.Hm().format(value);
     if (date == today.subtract(const Duration(days: 1))) return 'Yesterday';
     return DateFormat('d MMMM yyyy').format(value);
+  }
+}
+
+class _ChatAvatar extends StatelessWidget {
+  final String title;
+  final String? imageUrl;
+
+  const _ChatAvatar({required this.title, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final image = imageUrl?.trim();
+    return CircleAvatar(
+      radius: 26,
+      backgroundColor: colorScheme.primaryContainer,
+      foregroundImage: image == null || image.isEmpty
+          ? null
+          : NetworkImage(image),
+      child: image == null || image.isEmpty
+          ? Text(
+              _initials(title),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w900,
+              ),
+            )
+          : null,
+    );
+  }
+
+  String _initials(String title) {
+    final name = title.trim();
+    if (name.isEmpty || name == 'Unknown Contact') return '?';
+    final parts = name
+        .split(RegExp(r'\s+'))
+        .where((part) => part.trim().isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '?';
+    final first = parts.first.substring(0, 1);
+    final last = parts.length > 1 ? parts.last.substring(0, 1) : '';
+    return '$first$last'.toUpperCase();
   }
 }

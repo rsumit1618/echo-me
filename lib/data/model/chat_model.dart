@@ -8,6 +8,7 @@ class ChatModel extends Chat {
     required super.participantIds,
     super.participantNames,
     super.participantPhones,
+    super.participantImageUrls,
     super.typing,
     super.lastMessage,
     required super.updatedAt,
@@ -27,6 +28,9 @@ class ChatModel extends Chat {
       participantPhones: Map<String, String>.from(
         data['participantPhones'] as Map? ?? const {},
       ),
+      participantImageUrls: Map<String, String>.from(
+        data['participantImageUrls'] as Map? ?? const {},
+      ),
       typing: Map<String, bool>.from(data['typing'] as Map? ?? const {}),
       lastMessage: last == null
           ? null
@@ -45,6 +49,7 @@ class ChatModel extends Chat {
       'participantIds': participantIds,
       'participantNames': participantNames,
       'participantPhones': participantPhones,
+      'participantImageUrls': participantImageUrls,
       'typing': typing,
       'lastMessage': lastMessage is MessageModel
           ? {'id': lastMessage!.id, ...(lastMessage! as MessageModel).toMap()}

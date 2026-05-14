@@ -1,18 +1,20 @@
+import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/features/calls/call_history_screen.dart';
 import 'package:echo_me/features/chats/chats_screen.dart';
 import 'package:echo_me/features/contacts/contacts_screen.dart';
 import 'package:echo_me/features/profile/profile_screen.dart';
 import 'package:echo_me/features/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _index = 0;
 
   final _screens = const [
@@ -24,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Echo Me'),
@@ -62,9 +66,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _index,
-        children: _screens,
+      body: KeyedSubtree(
+        key: ValueKey(themeMode),
+        child: IndexedStack(
+          index: _index,
+          children: _screens,
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

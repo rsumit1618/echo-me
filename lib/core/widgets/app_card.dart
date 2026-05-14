@@ -19,15 +19,13 @@ class AppCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return ConstrainedBox(
-      constraints: BoxConstraints(
-        minWidth: width ?? double.infinity, // ✅ ensures width is always bounded
-      ),
+      constraints: BoxConstraints(minWidth: width ?? double.infinity),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: colorScheme.outlineVariant.withValues(alpha: .55),
           ),
@@ -38,20 +36,17 @@ class AppCard extends StatelessWidget {
                     ? .22
                     : .07,
               ),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
             ),
           ],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
             onTap: onTap,
-            child: Padding(
-              padding: padding,
-              child: child,
-            ),
+            child: Padding(padding: padding, child: child),
           ),
         ),
       ),
@@ -59,16 +54,11 @@ class AppCard extends StatelessWidget {
   }
 }
 
-
 class AnimatedListItem extends StatelessWidget {
   final int index;
   final Widget child;
 
-  const AnimatedListItem({
-    super.key,
-    required this.index,
-    required this.child,
-  });
+  const AnimatedListItem({super.key, required this.index, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -77,14 +67,11 @@ class AnimatedListItem extends StatelessWidget {
       duration: Duration(milliseconds: 260 + (index.clamp(0, 8) * 35)),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
-        return Align( // ✅ CRITICAL FIX
+        return Align(
           alignment: Alignment.topCenter,
           child: Transform.translate(
             offset: Offset(0, 18 * (1 - value)),
-            child: Opacity(
-              opacity: value,
-              child: child,
-            ),
+            child: Opacity(opacity: value, child: child),
           ),
         );
       },

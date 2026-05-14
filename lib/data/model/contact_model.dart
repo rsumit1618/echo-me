@@ -7,9 +7,10 @@ class ContactModel extends AppContact {
     required super.displayName,
     required super.normalizedPhone,
     super.registeredUserId,
+    String? profileImageUrl,
     super.canCall,
     required super.syncedAt,
-  });
+  }) : super(profileImageUrl: profileImageUrl);
 
   factory ContactModel.fromMap(String id, Map<String, dynamic> data) {
     final displayName = (data['displayName'] as String?)?.trim();
@@ -21,6 +22,7 @@ class ContactModel extends AppContact {
           : displayName,
       normalizedPhone: data['normalizedPhone'] as String? ?? '',
       registeredUserId: data['registeredUserId'] as String?,
+      profileImageUrl: data['profileImageUrl'] as String?,
       canCall: data['canCall'] as bool? ?? false,
       syncedAt: data['syncedAt'] is Timestamp
           ? (data['syncedAt'] as Timestamp).toDate()
@@ -33,6 +35,7 @@ class ContactModel extends AppContact {
       'displayName': displayName,
       'normalizedPhone': normalizedPhone,
       'registeredUserId': registeredUserId,
+      'profileImageUrl': profileImageUrl,
       'canCall': canCall,
       'syncedAt': Timestamp.fromDate(syncedAt),
     };

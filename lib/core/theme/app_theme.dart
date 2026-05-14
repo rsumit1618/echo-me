@@ -3,33 +3,52 @@ import 'package:flutter/material.dart';
 enum AppThemeMode { light, dark, elite }
 
 class AppTheme {
+  static ThemeData fromMode(AppThemeMode mode) {
+    return switch (mode) {
+      AppThemeMode.light => light(),
+      AppThemeMode.dark => dark(),
+      AppThemeMode.elite => elite(),
+    };
+  }
+
   static ThemeData light() {
+    const seed = Color(0xFF0F9D58);
     return _base(
       ColorScheme.fromSeed(
-        seedColor: const Color(0xFF0F9D58),
+        seedColor: seed,
         surface: const Color(0xFFF8FAF9),
+        surfaceContainerHighest: const Color(0xFFE8F2ED),
       ),
+      scaffoldBackgroundColor: const Color(0xFFF3F7F5),
     );
   }
 
   static ThemeData dark() {
+    const seed = Color(0xFF36C17A);
     return _base(
       ColorScheme.fromSeed(
-        seedColor: const Color(0xFF0F9D58),
+        seedColor: seed,
         brightness: Brightness.dark,
         surface: const Color(0xFF151A18),
+        surfaceContainerHighest: const Color(0xFF25302B),
       ),
+      scaffoldBackgroundColor: const Color(0xFF0F1412),
     );
   }
 
   static ThemeData elite() {
     const gold = Color(0xFFC9A227);
     const ink = Color(0xFF101418);
+    const panel = Color(0xFF171C22);
     return _base(
       ColorScheme.fromSeed(
         seedColor: gold,
         brightness: Brightness.dark,
-        surface: const Color(0xFF151A20),
+        surface: panel,
+        primary: gold,
+        secondary: const Color(0xFFE0C46C),
+        tertiary: const Color(0xFF6EC6B8),
+        surfaceContainerHighest: const Color(0xFF242A32),
       ),
       scaffoldBackgroundColor: ink,
       appBarTheme: const AppBarTheme(
@@ -114,6 +133,37 @@ class AppTheme {
           TargetPlatform.android: ZoomPageTransitionsBuilder(),
           TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         },
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: colorScheme.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: colorScheme.primary,
+        textColor: colorScheme.onSurface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colorScheme.surface,
+        modalBackgroundColor: colorScheme.surface,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: colorScheme.inverseSurface,
+        contentTextStyle: TextStyle(color: colorScheme.onInverseSurface),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dividerTheme: DividerThemeData(
+        color: colorScheme.outlineVariant.withValues(alpha: .6),
       ),
       useMaterial3: true,
     );

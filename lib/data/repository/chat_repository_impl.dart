@@ -42,11 +42,12 @@ class ChatRepositoryImpl implements ChatRepository {
         .orderBy('updatedAt', descending: true)
         .limit(50)
         .snapshots()
-        .map((snapshot) {
-          return snapshot.docs.map((doc) {
+        .asyncMap((snapshot) async {
+          final chats = snapshot.docs.map((doc) {
             final data = doc.data();
             return ChatModel.fromMap(doc.id, data);
           }).where((chat) => chat.lastMessage != null).toList();
+          return _withParticipantImages(chats);
         })
         .handleError((error, stack) {
           if (error.toString().contains('failed-precondition')) {
@@ -60,10 +61,13 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Stream<Chat?> watchChat(String chatId) {
-    return _firestore.chats.doc(chatId).snapshots().map((doc) {
+    return _firestore.chats.doc(chatId).snapshots().asyncMap((doc) async {
       final data = doc.data();
       if (data == null) return null;
-      return ChatModel.fromMap(doc.id, data);
+      final chats = await _withParticipantImages([
+        ChatModel.fromMap(doc.id, data),
+      ]);
+      return chats.first;
     });
   }
 
@@ -136,6 +140,7 @@ class ChatRepositoryImpl implements ChatRepository {
     String peerUserId, {
     String? peerDisplayName,
     String? peerPhoneNumber,
+    String? peerProfileImageUrl,
   }) async {
     final currentUser = _auth.firebaseUser;
     if (currentUser == null) {
@@ -155,6 +160,12 @@ class ChatRepositoryImpl implements ChatRepository {
       'participantPhones': {
         if (currentUser.phoneNumber != null) uid: currentUser.phoneNumber,
         if (peerPhoneNumber != null) peerUserId: peerPhoneNumber,
+      },
+      'participantImageUrls': {
+        if (currentUser.photoURL != null) uid: currentUser.photoURL,
+        if (peerProfileImageUrl != null &&
+            peerProfileImageUrl.trim().isNotEmpty)
+          peerUserId: peerProfileImageUrl.trim(),
       },
       'updatedAt': FieldValue.serverTimestamp(),
       'unreadCounts': {uid: 0, peerUserId: 0},
@@ -339,6 +350,52 @@ class ChatRepositoryImpl implements ChatRepository {
         print('notification request failed: $error');
       }
     }
+  }
+
+  Future<List<ChatModel>> _withParticipantImages(List<ChatModel> chats) async {
+    final missingUserIds = <String>{};
+    for (final chat in chats) {
+      for (final id in chat.participantIds) {
+        if ((chat.participantImageUrls[id] ?? '').trim().isEmpty) {
+          missingUserIds.add(id);
+        }
+      }
+    }
+    if (missingUserIds.isEmpty) return chats;
+
+    final imageByUserId = <String, String>{};
+    final ids = missingUserIds.toList();
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk = ids.skip(i).take(10).toList();
+      final users = await _firestore.users
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      for (final doc in users.docs) {
+        final imageUrl = doc.data()['profileImageUrl'] as String?;
+        if (imageUrl != null && imageUrl.trim().isNotEmpty) {
+          imageByUserId[doc.id] = imageUrl.trim();
+        }
+      }
+    }
+
+    return chats.map((chat) {
+      final imageUrls = {...chat.participantImageUrls};
+      for (final id in chat.participantIds) {
+        final imageUrl = imageByUserId[id];
+        if (imageUrl != null) imageUrls[id] = imageUrl;
+      }
+      return ChatModel(
+        id: chat.id,
+        participantIds: chat.participantIds,
+        participantNames: chat.participantNames,
+        participantPhones: chat.participantPhones,
+        participantImageUrls: imageUrls,
+        typing: chat.typing,
+        lastMessage: chat.lastMessage,
+        updatedAt: chat.updatedAt,
+        unreadCounts: chat.unreadCounts,
+      );
+    }).toList();
   }
 
   String _notificationPreview(Message message) {

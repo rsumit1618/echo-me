@@ -5,6 +5,7 @@ class Chat {
   final List<String> participantIds;
   final Map<String, String> participantNames;
   final Map<String, String> participantPhones;
+  final Map<String, String> participantImageUrls;
   final Map<String, bool> typing;
   final Message? lastMessage;
   final DateTime updatedAt;
@@ -15,6 +16,7 @@ class Chat {
     required this.participantIds,
     this.participantNames = const {},
     this.participantPhones = const {},
+    this.participantImageUrls = const {},
     this.typing = const {},
     this.lastMessage,
     required this.updatedAt,

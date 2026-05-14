@@ -7,6 +7,7 @@ class AppContact {
   final String displayName;
   final String normalizedPhone;
   final String? registeredUserId;
+  final String? profileImageUrl;
   final bool canCall;
   final DateTime syncedAt;
 
@@ -15,6 +16,7 @@ class AppContact {
     required this.displayName,
     required this.normalizedPhone,
     this.registeredUserId,
+    this.profileImageUrl,
     this.canCall = false,
     required this.syncedAt,
   });

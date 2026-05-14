@@ -199,26 +199,18 @@ class _ContactTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final actionColor = switch (contact.action) {
-      ContactAction.invite => Theme.of(context).colorScheme.secondaryContainer,
-      ContactAction.chatNow => Theme.of(context).colorScheme.primaryContainer,
-      ContactAction.call => Theme.of(context).colorScheme.tertiaryContainer,
-    };
+    final colorScheme = Theme.of(context).colorScheme;
+    final actionStyle = _ContactActionStyle.from(context, contact.action);
 
     return AppCard(
       onTap: () => _handleAction(context, ref),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: actionColor,
-            child: Text(
-              _initials(contact.displayName),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+          _ContactAvatar(
+            displayName: contact.displayName,
+            imageUrl: contact.profileImageUrl,
+            backgroundColor: actionStyle.avatarColor,
+            foregroundColor: actionStyle.avatarForeground,
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -231,6 +223,7 @@ class _ContactTile extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -246,7 +239,15 @@ class _ContactTile extends ConsumerWidget {
           ),
           const SizedBox(width: 10),
           Flexible(
-            child: FilledButton.tonal(
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: actionStyle.buttonColor,
+                foregroundColor: actionStyle.buttonForeground,
+                minimumSize: const Size(132, 52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
               onPressed: () => _handleAction(context, ref),
               child: Text(_getLabel(contact.action)),
             ),
@@ -254,19 +255,6 @@ class _ContactTile extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  String _initials(String displayName) {
-    final name = displayName.trim();
-    if (name.isEmpty || name == AppContact.defaultDisplayName) return '??';
-    final parts = name
-        .split(RegExp(r'\s+'))
-        .where((part) => part.trim().isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '??';
-    final first = parts.first.substring(0, 1);
-    final last = parts.length > 1 ? parts.last.substring(0, 1) : '';
-    return '$first$last'.toUpperCase();
   }
 
   String _getLabel(ContactAction action) {
@@ -300,6 +288,7 @@ class _ContactTile extends ConsumerWidget {
             peerId,
             peerDisplayName: contact.displayName,
             peerPhoneNumber: contact.normalizedPhone,
+            peerProfileImageUrl: contact.profileImageUrl,
           )
           .timeout(const Duration(seconds: 20));
 
@@ -317,5 +306,101 @@ class _ContactTile extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _ContactAvatar extends StatelessWidget {
+  final String displayName;
+  final String? imageUrl;
+  final Color backgroundColor;
+  final Color foregroundColor;
+
+  const _ContactAvatar({
+    required this.displayName,
+    required this.imageUrl,
+    required this.backgroundColor,
+    required this.foregroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final image = imageUrl;
+    return CircleAvatar(
+      radius: 25,
+      backgroundColor: backgroundColor,
+      foregroundImage: image == null || image.trim().isEmpty
+          ? null
+          : NetworkImage(image.trim()),
+      child: image == null || image.trim().isEmpty
+          ? Text(
+              _initials(displayName),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: foregroundColor,
+                fontWeight: FontWeight.w900,
+              ),
+            )
+          : null,
+    );
+  }
+
+  String _initials(String displayName) {
+    final name = displayName.trim();
+    if (name.isEmpty || name == AppContact.defaultDisplayName) return '?';
+    final parts = name
+        .split(RegExp(r'\s+'))
+        .where((part) => part.trim().isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '?';
+    final first = parts.first.substring(0, 1);
+    final last = parts.length > 1 ? parts.last.substring(0, 1) : '';
+    return '$first$last'.toUpperCase();
+  }
+}
+
+class _ContactActionStyle {
+  final Color avatarColor;
+  final Color avatarForeground;
+  final Color buttonColor;
+  final Color buttonForeground;
+
+  const _ContactActionStyle({
+    required this.avatarColor,
+    required this.avatarForeground,
+    required this.buttonColor,
+    required this.buttonForeground,
+  });
+
+  factory _ContactActionStyle.from(BuildContext context, ContactAction action) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = colorScheme.brightness == Brightness.dark;
+
+    return switch (action) {
+      ContactAction.chatNow => _ContactActionStyle(
+        avatarColor: colorScheme.primaryContainer,
+        avatarForeground: colorScheme.onPrimaryContainer,
+        buttonColor: colorScheme.primaryContainer,
+        buttonForeground: colorScheme.onPrimaryContainer,
+      ),
+      ContactAction.invite => _ContactActionStyle(
+        avatarColor: isDark
+            ? const Color(0xFF5C3F15)
+            : const Color(0xFFFFE1B8),
+        avatarForeground: isDark
+            ? const Color(0xFFFFD9A3)
+            : const Color(0xFF4A2A00),
+        buttonColor: isDark
+            ? const Color(0xFF6B4314)
+            : const Color(0xFFFFD29A),
+        buttonForeground: isDark
+            ? const Color(0xFFFFE6C7)
+            : const Color(0xFF3D2500),
+      ),
+      ContactAction.call => _ContactActionStyle(
+        avatarColor: colorScheme.tertiaryContainer,
+        avatarForeground: colorScheme.onTertiaryContainer,
+        buttonColor: colorScheme.tertiaryContainer,
+        buttonForeground: colorScheme.onTertiaryContainer,
+      ),
+    };
   }
 }
