@@ -150,6 +150,9 @@ class ChatRepositoryImpl implements ChatRepository {
     final uid = currentUser.uid;
     final ids = [uid, peerUserId]..sort();
     final chatId = ids.join('_');
+    final currentUserDoc = await _firestore.users.doc(uid).get();
+    final currentProfileImageUrl =
+        currentUserDoc.data()?['profileImageUrl'] as String?;
     await _firestore.chats.doc(chatId).set({
       'participantIds': ids,
       'participantNames': {
@@ -162,7 +165,9 @@ class ChatRepositoryImpl implements ChatRepository {
         if (peerPhoneNumber != null) peerUserId: peerPhoneNumber,
       },
       'participantImageUrls': {
-        if (currentUser.photoURL != null) uid: currentUser.photoURL,
+        if (currentProfileImageUrl != null &&
+            currentProfileImageUrl.trim().isNotEmpty)
+          uid: currentProfileImageUrl.trim(),
         if (peerProfileImageUrl != null &&
             peerProfileImageUrl.trim().isNotEmpty)
           peerUserId: peerProfileImageUrl.trim(),
@@ -353,18 +358,14 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   Future<List<ChatModel>> _withParticipantImages(List<ChatModel> chats) async {
-    final missingUserIds = <String>{};
+    final userIds = <String>{};
     for (final chat in chats) {
-      for (final id in chat.participantIds) {
-        if ((chat.participantImageUrls[id] ?? '').trim().isEmpty) {
-          missingUserIds.add(id);
-        }
-      }
+      userIds.addAll(chat.participantIds);
     }
-    if (missingUserIds.isEmpty) return chats;
+    if (userIds.isEmpty) return chats;
 
     final imageByUserId = <String, String>{};
-    final ids = missingUserIds.toList();
+    final ids = userIds.toList();
     for (var i = 0; i < ids.length; i += 10) {
       final chunk = ids.skip(i).take(10).toList();
       final users = await _firestore.users

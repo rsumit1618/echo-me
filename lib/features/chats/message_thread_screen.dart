@@ -336,10 +336,14 @@ class _ChatTitle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentUid = ref.watch(authRepositoryProvider).firebaseUser?.uid;
+    final currentUid =
+        ref.watch(authStateProvider).valueOrNull?.uid ??
+        ref.watch(authRepositoryProvider).firebaseUser?.uid;
     final peerId = chat?.participantIds.firstWhere(
       (id) => id != currentUid,
-      orElse: () => '',
+      orElse: () => chat!.participantIds.length > 1
+          ? chat!.participantIds.last
+          : '',
     );
     if (chat == null || peerId == null || peerId.isEmpty) {
       return const Text('Chat');

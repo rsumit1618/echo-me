@@ -15,7 +15,9 @@ class ChatsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final chats = ref.watch(recentChatsProvider);
-    final currentUid = ref.watch(authRepositoryProvider).firebaseUser?.uid;
+    final currentUid =
+        ref.watch(authStateProvider).valueOrNull?.uid ??
+        ref.watch(authRepositoryProvider).firebaseUser?.uid;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final themeKey = Object.hash(
@@ -41,6 +43,10 @@ class ChatsScreen extends ConsumerWidget {
             final message = chat.lastMessage;
             final peerId = _peerId(chat, currentUid);
             final imageUrl = chat.participantImageUrls[peerId];
+            final unreadCount = currentUid == null
+                ? 0
+                : chat.unreadCounts[currentUid] ?? 0;
+            final hasUnread = unreadCount > 0;
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AnimatedListItem(
@@ -69,7 +75,9 @@ class ChatsScreen extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                               style: textTheme.titleMedium?.copyWith(
                                 color: colorScheme.onSurface,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: hasUnread
+                                    ? FontWeight.w900
+                                    : FontWeight.w800,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -78,19 +86,21 @@ class ChatsScreen extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
+                                color: hasUnread
+                                    ? colorScheme.onSurface
+                                    : colorScheme.onSurfaceVariant,
+                                fontWeight: hasUnread
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        _chatDate(chat.updatedAt),
-                        style: textTheme.labelMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      _ChatMeta(
+                        date: _chatDate(chat.updatedAt),
+                        unreadCount: unreadCount,
                       ),
                     ],
                   ),
@@ -106,6 +116,13 @@ class ChatsScreen extends ConsumerWidget {
   }
 
   String _peerId(Chat chat, String? currentUid) {
+    if (currentUid == null || currentUid.isEmpty) {
+      return chat.participantIds.length > 1
+          ? chat.participantIds.last
+          : chat.participantIds.isEmpty
+          ? ''
+          : chat.participantIds.first;
+    }
     return chat.participantIds.firstWhere(
       (id) => id != currentUid,
       orElse: () => '',
@@ -139,6 +156,76 @@ class ChatsScreen extends ConsumerWidget {
     if (date == today) return DateFormat.Hm().format(value);
     if (date == today.subtract(const Duration(days: 1))) return 'Yesterday';
     return DateFormat('d MMMM yyyy').format(value);
+  }
+}
+
+class _ChatMeta extends StatelessWidget {
+  final String date;
+  final int unreadCount;
+
+  const _ChatMeta({required this.date, required this.unreadCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasUnread = unreadCount > 0;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 48),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            date,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: hasUnread
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+              fontWeight: hasUnread ? FontWeight.w900 : FontWeight.w700,
+            ),
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: hasUnread
+                ? Padding(
+                    key: ValueKey(unreadCount),
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 24,
+                        minHeight: 24,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 7),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorScheme.primary.withValues(alpha: .28),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        unreadCount > 99 ? '99+' : '$unreadCount',
+                        style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(
+                              color: colorScheme.onPrimary,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                    ),
+                  )
+                : const SizedBox(key: ValueKey('empty'), height: 0),
+          ),
+        ],
+      ),
+    );
   }
 }
 

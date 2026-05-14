@@ -116,20 +116,18 @@ class ContactRepositoryImpl implements ContactRepository {
   }
 
   Future<List<ContactModel>> _withProfileImages(List<ContactModel> contacts) async {
-    final missingIds = contacts
+    final registeredIds = contacts
         .where(
-          (contact) =>
-              contact.registeredUserId != null &&
-              (contact.profileImageUrl ?? '').trim().isEmpty,
+          (contact) => contact.registeredUserId != null,
         )
         .map((contact) => contact.registeredUserId!)
         .toSet()
         .toList();
-    if (missingIds.isEmpty) return contacts;
+    if (registeredIds.isEmpty) return contacts;
 
     final imageByUserId = <String, String>{};
-    for (var i = 0; i < missingIds.length; i += 10) {
-      final chunk = missingIds.skip(i).take(10).toList();
+    for (var i = 0; i < registeredIds.length; i += 10) {
+      final chunk = registeredIds.skip(i).take(10).toList();
       final users = await _firestore.users
           .where(FieldPath.documentId, whereIn: chunk)
           .get();
