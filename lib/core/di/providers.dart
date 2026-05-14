@@ -13,84 +13,124 @@ import 'package:echo_me/domain/repository/settings_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (_) => getIt<AuthRepository>(),
+      (_) => getIt<AuthRepository>(),
 );
+
 final contactRepositoryProvider = Provider<ContactRepository>(
-  (_) => getIt<ContactRepository>(),
+      (_) => getIt<ContactRepository>(),
 );
+
 final chatRepositoryProvider = Provider<ChatRepository>(
-  (_) => getIt<ChatRepository>(),
+      (_) => getIt<ChatRepository>(),
 );
+
 final callRepositoryProvider = Provider<CallRepository>(
-  (_) => getIt<CallRepository>(),
+      (_) => getIt<CallRepository>(),
 );
+
 final settingsRepositoryProvider = Provider<SettingsRepository>(
-  (_) => getIt<SettingsRepository>(),
+      (_) => getIt<SettingsRepository>(),
 );
 
-final authStateProvider = StreamProvider<AppUser?>(
-  (ref) => ref.watch(authRepositoryProvider).authStateChanges(),
+/// AUTH STATE
+final authStateProvider = StreamProvider.autoDispose<AppUser?>(
+      (ref) => ref.watch(authRepositoryProvider).authStateChanges(),
 );
 
-final firebaseUserProvider = StreamProvider(
-  (ref) => ref.watch(authRepositoryProvider).firebaseAuthStateChanges(),
+/// FIREBASE USER
+final firebaseUserProvider = StreamProvider.autoDispose(
+      (ref) => ref.watch(authRepositoryProvider).firebaseAuthStateChanges(),
 );
 
-final currentUserIdProvider = StreamProvider<String?>(
-  (ref) => ref
+/// CURRENT USER ID
+final currentUserIdProvider = StreamProvider.autoDispose<String?>(
+      (ref) => ref
       .watch(authRepositoryProvider)
       .firebaseAuthStateChanges()
       .map((user) => user?.uid),
 );
 
-final contactsProvider = StreamProvider<List<AppContact>>(
-  (ref) {
+/// CONTACTS
+final contactsProvider = StreamProvider.autoDispose<List<AppContact>>(
+      (ref) {
     final uid = ref.watch(currentUserIdProvider).valueOrNull;
-    if (uid == null) return Stream.value(const <AppContact>[]);
+
+    if (uid == null) {
+      return Stream.value(const <AppContact>[]);
+    }
+
     return ref.watch(contactRepositoryProvider).watchContacts();
   },
 );
 
-final recentChatsProvider = StreamProvider<List<Chat>>(
-  (ref) {
+/// RECENT CHATS
+final recentChatsProvider = StreamProvider.autoDispose<List<Chat>>(
+      (ref) {
     final uid = ref.watch(currentUserIdProvider).valueOrNull;
-    if (uid == null) return Stream.value(const <Chat>[]);
+
+    if (uid == null) {
+      return Stream.value(const <Chat>[]);
+    }
+
     return ref.watch(chatRepositoryProvider).watchRecentChats();
   },
 );
 
-final chatProvider = StreamProvider.family<Chat?, String>(
-  (ref, chatId) {
+/// SINGLE CHAT
+final chatProvider = StreamProvider.autoDispose.family<Chat?, String>(
+      (ref, chatId) {
     final uid = ref.watch(currentUserIdProvider).valueOrNull;
-    if (uid == null) return Stream.value(null);
+
+    if (uid == null) {
+      return Stream.value(null);
+    }
+
     return ref.watch(chatRepositoryProvider).watchChat(chatId);
   },
 );
 
-final messagesProvider = StreamProvider.family<List<Message>, String>(
-  (ref, chatId) {
+/// MESSAGES
+final messagesProvider =
+StreamProvider.autoDispose.family<List<Message>, String>(
+      (ref, chatId) {
     final uid = ref.watch(currentUserIdProvider).valueOrNull;
-    if (uid == null) return Stream.value(const <Message>[]);
+
+    if (uid == null) {
+      return Stream.value(const <Message>[]);
+    }
+
     return ref.watch(chatRepositoryProvider).watchMessages(chatId);
   },
 );
 
-final userStatusProvider = StreamProvider.family<Map<String, dynamic>?, String>(
-  (ref, userId) => ref.watch(chatRepositoryProvider).watchUserStatus(userId),
+/// USER STATUS
+final userStatusProvider =
+StreamProvider.autoDispose.family<Map<String, dynamic>?, String>(
+      (ref, userId) =>
+      ref.watch(chatRepositoryProvider).watchUserStatus(userId),
 );
 
-final callHistoryProvider = StreamProvider<List<CallLogEntry>>(
-  (ref) {
+/// CALL HISTORY
+final callHistoryProvider =
+StreamProvider.autoDispose<List<CallLogEntry>>(
+      (ref) {
     final uid = ref.watch(currentUserIdProvider).valueOrNull;
-    if (uid == null) return Stream.value(const <CallLogEntry>[]);
+
+    if (uid == null) {
+      return Stream.value(const <CallLogEntry>[]);
+    }
+
     return ref.watch(callRepositoryProvider).watchCallHistory();
   },
 );
 
+/// THEME (KEEP PERSISTENT)
 final themeModeProvider =
-    StateNotifierProvider<ThemeModeController, AppThemeMode>(
-      (ref) => ThemeModeController(ref.watch(settingsRepositoryProvider)),
-    );
+StateNotifierProvider<ThemeModeController, AppThemeMode>(
+      (ref) => ThemeModeController(
+    ref.watch(settingsRepositoryProvider),
+  ),
+);
 
 class ThemeModeController extends StateNotifier<AppThemeMode> {
   final SettingsRepository _settings;
