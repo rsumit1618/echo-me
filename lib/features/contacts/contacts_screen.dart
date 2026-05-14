@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/domain/entity/contact.dart';
@@ -201,6 +203,8 @@ class _ContactTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final actionStyle = _ContactActionStyle.from(context, contact.action);
+    final compact = MediaQuery.sizeOf(context).width < 390;
+    final buttonWidth = compact ? 112.0 : 132.0;
 
     return AppCard(
       onTap: () => _handleAction(context, ref),
@@ -238,18 +242,29 @@ class _ContactTile extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Flexible(
-            child: FilledButton(
+          SizedBox(
+            width: buttonWidth,
+            child: FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: actionStyle.buttonColor,
                 foregroundColor: actionStyle.buttonForeground,
-                minimumSize: const Size(132, 52),
+                padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
+                minimumSize: Size(buttonWidth, compact ? 48 : 52),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(22),
                 ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
               ),
               onPressed: () => _handleAction(context, ref),
-              child: Text(_getLabel(contact.action)),
+              icon: Icon(_getIcon(contact.action), size: compact ? 17 : 18),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _getLabel(contact.action),
+                  maxLines: 1,
+                  softWrap: false,
+                ),
+              ),
             ),
           ),
         ],
@@ -265,6 +280,17 @@ class _ContactTile extends ConsumerWidget {
         return 'Chat Now';
       case ContactAction.call:
         return 'Call';
+    }
+  }
+
+  IconData _getIcon(ContactAction action) {
+    switch (action) {
+      case ContactAction.invite:
+        return Icons.person_add_alt_1;
+      case ContactAction.chatNow:
+        return Icons.chat_bubble;
+      case ContactAction.call:
+        return Icons.call;
     }
   }
 
@@ -324,23 +350,36 @@ class _ContactAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = imageUrl;
+    final image = _imageProvider(imageUrl);
     return CircleAvatar(
-      radius: 25,
+      radius: MediaQuery.sizeOf(context).width < 390 ? 25 : 28,
       backgroundColor: backgroundColor,
-      foregroundImage: image == null || image.trim().isEmpty
-          ? null
-          : NetworkImage(image.trim()),
-      child: image == null || image.trim().isEmpty
+      foregroundImage: image,
+      child: image == null
           ? Text(
               _initials(displayName),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 color: foregroundColor,
                 fontWeight: FontWeight.w900,
               ),
             )
           : null,
     );
+  }
+
+  ImageProvider? _imageProvider(String? value) {
+    try {
+      final image = value?.trim();
+      if (image == null || image.isEmpty) return null;
+      if (image.startsWith('data:image')) {
+        final commaIndex = image.indexOf(',');
+        if (commaIndex == -1) return null;
+        return MemoryImage(base64Decode(image.substring(commaIndex + 1)));
+      }
+      return NetworkImage(image);
+    } catch (_) {
+      return null;
+    }
   }
 
   String _initials(String displayName) {

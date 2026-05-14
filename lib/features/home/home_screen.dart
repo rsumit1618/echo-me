@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/features/calls/call_history_screen.dart';
 import 'package:echo_me/features/chats/chats_screen.dart';
@@ -27,6 +29,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
+    final currentUser = ref.watch(authStateProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -60,7 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.person, color: Colors.white, size: 22),
+                child: _HomeProfileImage(imageUrl: currentUser?.profileImageUrl),
               ),
             ),
           ),
@@ -100,5 +103,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+class _HomeProfileImage extends StatelessWidget {
+  final String? imageUrl;
+
+  const _HomeProfileImage({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final image = _imageProvider(imageUrl);
+    if (image == null) {
+      return const Icon(Icons.person, color: Colors.white, size: 22);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(3),
+      child: CircleAvatar(
+        backgroundImage: image,
+        backgroundColor: Colors.transparent,
+      ),
+    );
+  }
+
+  ImageProvider? _imageProvider(String? value) {
+    try {
+      final image = value?.trim();
+      if (image == null || image.isEmpty) return null;
+      if (image.startsWith('data:image')) {
+        final commaIndex = image.indexOf(',');
+        if (commaIndex == -1) return null;
+        return MemoryImage(base64Decode(image.substring(commaIndex + 1)));
+      }
+      return NetworkImage(image);
+    } catch (_) {
+      return null;
+    }
   }
 }

@@ -6,6 +6,7 @@ import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/domain/entity/chat.dart';
 import 'package:echo_me/domain/entity/message.dart';
+import 'package:echo_me/domain/repository/chat_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   final _text = TextEditingController();
   final _picker = ImagePicker();
   final _scrollController = ScrollController();
+  late final ChatRepository _chatRepository;
   Timer? _typingTimer;
   bool _sending = false;
   bool _loadingOlder = false;
@@ -39,18 +41,19 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   @override
   void initState() {
     super.initState();
+    _chatRepository = ref.read(chatRepositoryProvider);
     _text.addListener(_onTextChanged);
     Future.microtask(() async {
-      await ref.read(chatRepositoryProvider).setActiveChat(widget.chatId);
-      await ref.read(chatRepositoryProvider).markRead(widget.chatId);
+      await _chatRepository.setActiveChat(widget.chatId);
+      await _chatRepository.markRead(widget.chatId);
     });
   }
 
   @override
   void dispose() {
     _typingTimer?.cancel();
-    ref.read(chatRepositoryProvider).setTyping(widget.chatId, false);
-    ref.read(chatRepositoryProvider).setActiveChat(null);
+    _chatRepository.setTyping(widget.chatId, false);
+    _chatRepository.setActiveChat(null);
     _scrollController.dispose();
     _text.dispose();
     super.dispose();
@@ -346,6 +349,7 @@ class _ChatTitle extends ConsumerWidget {
         chat!.participantNames[peerId] ??
         chat!.participantPhones[peerId] ??
         'Unknown Contact';
+    final image = _imageProvider(chat!.participantImageUrls[peerId]);
     final status = ref.watch(userStatusProvider(peerId));
     final isTyping =
         chat!.participantIds.contains(peerId) &&
@@ -355,18 +359,40 @@ class _ChatTitle extends ConsumerWidget {
       data: (data) {
         final isOnline = data?['isOnline'] as bool? ?? false;
         final lastSeen = _readDate(data?['lastSeen']);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(
-              isTyping
-                  ? 'typing...'
-                  : isOnline
-                  ? 'online'
-                  : _lastSeenText(lastSeen),
-              style: Theme.of(context).textTheme.labelSmall,
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundImage: image,
+              child: image == null
+                  ? Icon(
+                      Icons.person,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      size: 20,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    isTyping
+                        ? 'typing...'
+                        : isOnline
+                        ? 'online'
+                        : _lastSeenText(lastSeen),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+              ),
             ),
           ],
         );
@@ -374,6 +400,21 @@ class _ChatTitle extends ConsumerWidget {
       loading: () => Text(title),
       error: (_, __) => Text(title),
     );
+  }
+
+  ImageProvider? _imageProvider(String? value) {
+    try {
+      final image = value?.trim();
+      if (image == null || image.isEmpty) return null;
+      if (image.startsWith('data:image')) {
+        final commaIndex = image.indexOf(',');
+        if (commaIndex == -1) return null;
+        return MemoryImage(base64Decode(image.substring(commaIndex + 1)));
+      }
+      return NetworkImage(image);
+    } catch (_) {
+      return null;
+    }
   }
 
   DateTime? _readDate(Object? value) {

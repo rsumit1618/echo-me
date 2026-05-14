@@ -47,12 +47,22 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<AppUser?> authStateChanges() {
-    return _auth.authStateChanges().asyncMap((user) async {
-      if (user == null) return null;
-      if (user.phoneNumber == null) return null;
+    return _auth.authStateChanges().asyncExpand((user) async* {
+      if (user == null || user.phoneNumber == null) {
+        yield null;
+        return;
+      }
+
       final doc = await _firestore.users.doc(user.uid).get();
-      if (!doc.exists) return _ensureProfile(user);
-      return UserModel.fromFirestore(doc);
+      if (!doc.exists) {
+        yield await _ensureProfile(user);
+      }
+
+      yield* _firestore.users.doc(user.uid).snapshots().map((snapshot) {
+        final data = snapshot.data();
+        if (data == null) return null;
+        return UserModel.fromMap(snapshot.id, data);
+      });
     });
   }
 
@@ -157,6 +167,26 @@ class AuthRepositoryImpl implements AuthRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     };
     await _firestore.users.doc(user.uid).set(updates, SetOptions(merge: true));
+
+    if (profileImageUrl != null) {
+      final phone = user.phoneNumber;
+      final phoneIndex = _firestore.db.collection(FirebasePaths.phoneIndex);
+      final phoneIndexData = {
+        'profileImageUrl': profileImageUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (phone != null && phone.isNotEmpty) {
+        await phoneIndex.doc(phone).set(phoneIndexData, SetOptions(merge: true));
+        final normalizedPhone = PhoneNormalizer.normalizeToIndian10DigitOrNull(
+          phone,
+        );
+        if (normalizedPhone != null) {
+          await phoneIndex
+              .doc(normalizedPhone)
+              .set(phoneIndexData, SetOptions(merge: true));
+        }
+      }
+    }
   }
 
   @override
@@ -209,6 +239,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final phoneIndexData = {
       'uid': fbUser.uid,
       'phoneNumber': phone,
+      'profileImageUrl': model.profileImageUrl,
       'canCall': true,
       'updatedAt': FieldValue.serverTimestamp(),
     };
