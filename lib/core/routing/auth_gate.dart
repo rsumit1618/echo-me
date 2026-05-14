@@ -31,7 +31,7 @@ class AuthGate extends ConsumerWidget {
           data: (appUser) {
             // If Firestore profile/doc isn't linked/bootstrapped yet, force phone verification linking flow.
             if (appUser == null) return const MobileVerificationScreen();
-            return const HomeScreen();
+            return HomeScreen(key: ValueKey(appUser.uid));
           },
           loading: () =>
               const Scaffold(body: Center(child: CircularProgressIndicator())),

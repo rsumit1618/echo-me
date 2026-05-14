@@ -36,20 +36,43 @@ final firebaseUserProvider = StreamProvider(
   (ref) => ref.watch(authRepositoryProvider).firebaseAuthStateChanges(),
 );
 
+final currentUserIdProvider = StreamProvider<String?>(
+  (ref) => ref
+      .watch(authRepositoryProvider)
+      .firebaseAuthStateChanges()
+      .map((user) => user?.uid),
+);
+
 final contactsProvider = StreamProvider<List<AppContact>>(
-  (ref) => ref.watch(contactRepositoryProvider).watchContacts(),
+  (ref) {
+    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+    if (uid == null) return Stream.value(const <AppContact>[]);
+    return ref.watch(contactRepositoryProvider).watchContacts();
+  },
 );
 
 final recentChatsProvider = StreamProvider<List<Chat>>(
-  (ref) => ref.watch(chatRepositoryProvider).watchRecentChats(),
+  (ref) {
+    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+    if (uid == null) return Stream.value(const <Chat>[]);
+    return ref.watch(chatRepositoryProvider).watchRecentChats();
+  },
 );
 
 final chatProvider = StreamProvider.family<Chat?, String>(
-  (ref, chatId) => ref.watch(chatRepositoryProvider).watchChat(chatId),
+  (ref, chatId) {
+    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+    if (uid == null) return Stream.value(null);
+    return ref.watch(chatRepositoryProvider).watchChat(chatId);
+  },
 );
 
 final messagesProvider = StreamProvider.family<List<Message>, String>(
-  (ref, chatId) => ref.watch(chatRepositoryProvider).watchMessages(chatId),
+  (ref, chatId) {
+    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+    if (uid == null) return Stream.value(const <Message>[]);
+    return ref.watch(chatRepositoryProvider).watchMessages(chatId);
+  },
 );
 
 final userStatusProvider = StreamProvider.family<Map<String, dynamic>?, String>(
@@ -57,7 +80,11 @@ final userStatusProvider = StreamProvider.family<Map<String, dynamic>?, String>(
 );
 
 final callHistoryProvider = StreamProvider<List<CallLogEntry>>(
-  (ref) => ref.watch(callRepositoryProvider).watchCallHistory(),
+  (ref) {
+    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+    if (uid == null) return Stream.value(const <CallLogEntry>[]);
+    return ref.watch(callRepositoryProvider).watchCallHistory();
+  },
 );
 
 final themeModeProvider =
