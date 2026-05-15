@@ -84,7 +84,7 @@ class EchoAiController {
     final userMessage = EchoAiMessage(
       id: _uuid.v4(),
       role: EchoAiMessageRole.user,
-      text: cleanText,
+      text: sanitizeEchoAiText(cleanText),
       createdAt: DateTime.now(),
     );
 

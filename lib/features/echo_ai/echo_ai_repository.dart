@@ -61,7 +61,7 @@ class EchoAiRepository {
       throw const ServerFailure();
     }
 
-    return reply.trim();
+    return sanitizeEchoAiText(reply).trim();
   }
 
   void close() {

@@ -431,14 +431,15 @@ class _ReadableAiText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lines = text
+    final safeText = sanitizeEchoAiText(text);
+    final lines = safeText
         .replaceAll('\r\n', '\n')
         .split('\n')
         .map((line) => line.trim())
         .toList();
 
     if (compact || lines.length == 1) {
-      return Text(_cleanInlineMarkdown(text), style: _baseStyle(context));
+      return Text(_cleanInlineMarkdown(safeText), style: _baseStyle(context));
     }
 
     final children = <Widget>[];
