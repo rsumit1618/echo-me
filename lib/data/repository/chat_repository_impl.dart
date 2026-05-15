@@ -89,6 +89,7 @@ class ChatRepositoryImpl implements ChatRepository {
     await _firestore.chats.doc(chatId).set({
       'typing.$uid': isTyping,
       'typingUpdatedAt.$uid': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 

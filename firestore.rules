@@ -9,268 +9,48 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
-    function onlyKeys(keys) {
-      return request.resource.data.keys().hasOnly(keys);
-    }
-
-    function stringOrNull(value) {
-      return value == null || value is string;
-    }
-
-    function boolOrNull(value) {
-      return value == null || value is bool;
-    }
-
-    function timestampOrNull(value) {
-      return value == null || value is timestamp;
-    }
-
-    function intOrNull(value) {
-      return value == null || value is int;
-    }
-
-    function isParticipantList(value) {
-      return value is list
-        && value.size() >= 2
-        && value.size() <= 10
-        && request.auth.uid in value;
-    }
-
     function isChatParticipant(chatId) {
       return signedIn()
         && exists(/databases/$(database)/documents/chats/$(chatId))
         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
     }
 
-    function validUserProfile(uid) {
-      return onlyKeys([
-          'uid',
-          'phoneNumber',
-          'email',
-          'profileImageUrl',
-          'fcmToken',
-          'isOnline',
-          'lastSeen',
-          'activeChatId',
-          'createdAt',
-          'updatedAt'
-        ])
-        && request.resource.data.uid == uid
-        && request.resource.data.phoneNumber is string
-        && stringOrNull(request.resource.data.email)
-        && stringOrNull(request.resource.data.profileImageUrl)
-        && stringOrNull(request.resource.data.fcmToken)
-        && boolOrNull(request.resource.data.isOnline)
-        && timestampOrNull(request.resource.data.lastSeen)
-        && stringOrNull(request.resource.data.activeChatId)
-        && request.resource.data.createdAt is timestamp
-        && request.resource.data.updatedAt is timestamp;
-    }
-
-    function validPartialUserUpdate(uid) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'email',
-          'profileImageUrl',
-          'fcmToken',
-          'isOnline',
-          'lastSeen',
-          'activeChatId',
-          'updatedAt'
-        ])
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.uid == uid
-        && request.resource.data.phoneNumber == resource.data.phoneNumber
-        && request.resource.data.createdAt == resource.data.createdAt
-        && stringOrNull(request.resource.data.email)
-        && stringOrNull(request.resource.data.profileImageUrl)
-        && stringOrNull(request.resource.data.fcmToken)
-        && boolOrNull(request.resource.data.isOnline)
-        && timestampOrNull(request.resource.data.lastSeen)
-        && stringOrNull(request.resource.data.activeChatId)
-        && request.resource.data.updatedAt is timestamp;
-    }
-
-    function validContact() {
-      return onlyKeys([
-          'displayName',
-          'normalizedPhone',
-          'registeredUserId',
-          'profileImageUrl',
-          'canCall',
-          'syncedAt'
-        ])
-        && request.resource.data.displayName is string
-        && request.resource.data.normalizedPhone is string
-        && stringOrNull(request.resource.data.registeredUserId)
-        && stringOrNull(request.resource.data.profileImageUrl)
-        && request.resource.data.canCall is bool
-        && request.resource.data.syncedAt is timestamp;
-    }
-
-    function validCall() {
-      return onlyKeys([
-          'peerUserId',
-          'peerPhoneNumber',
-          'direction',
-          'type',
-          'startedAt',
-          'durationSeconds'
-        ])
-        && request.resource.data.peerUserId is string
-        && request.resource.data.peerPhoneNumber is string
-        && request.resource.data.direction in ['incoming', 'outgoing', 'missed']
-        && request.resource.data.type in ['voice', 'video']
-        && request.resource.data.startedAt is timestamp
-        && intOrNull(request.resource.data.durationSeconds);
-    }
-
-    function validChatCreate() {
-      return onlyKeys([
-          'participantIds',
-          'participantNames',
-          'participantPhones',
-          'participantImageUrls',
-          'typing',
-          'typingUpdatedAt',
-          'lastMessage',
-          'updatedAt',
-          'unreadCounts'
-        ])
-        && isParticipantList(request.resource.data.participantIds)
-        && request.resource.data.participantNames is map
-        && request.resource.data.participantPhones is map
-        && request.resource.data.participantImageUrls is map
-        && (!('typing' in request.resource.data) || request.resource.data.typing is map)
-        && (!('typingUpdatedAt' in request.resource.data) || request.resource.data.typingUpdatedAt is map)
-        && request.resource.data.updatedAt is timestamp
-        && request.resource.data.unreadCounts is map;
-    }
-
-    function validChatUpdate() {
-      return request.auth.uid in resource.data.participantIds
-        && request.resource.data.participantIds == resource.data.participantIds
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'participantNames',
-            'participantPhones',
-            'participantImageUrls',
-            'typing',
-            'typingUpdatedAt',
-            'lastMessage',
-            'updatedAt',
-            'unreadCounts'
-          ])
-        && request.resource.data.updatedAt is timestamp;
-    }
-
-    function validMessageCreate(chatId) {
-      return onlyKeys([
-          'chatId',
-          'senderId',
-          'text',
-          'imageUrls',
-          'attachments',
-          'type',
-          'state',
-          'createdAt',
-          'deliveredAt',
-          'readAt'
-        ])
-        && request.resource.data.chatId == chatId
-        && request.resource.data.senderId == request.auth.uid
-        && stringOrNull(request.resource.data.text)
-        && request.resource.data.imageUrls is list
-        && request.resource.data.imageUrls.size() <= 5
-        && request.resource.data.attachments is list
-        && request.resource.data.attachments.size() <= 5
-        && request.resource.data.type in ['text', 'image', 'pdf']
-        && request.resource.data.state in ['sending', 'sent', 'delivered', 'read', 'failed']
-        && request.resource.data.createdAt is timestamp
-        && timestampOrNull(request.resource.data.deliveredAt)
-        && timestampOrNull(request.resource.data.readAt);
-    }
-
-    function validMessageUpdate() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'state',
-          'deliveredAt',
-          'readAt'
-        ])
-        && request.resource.data.chatId == resource.data.chatId
-        && request.resource.data.senderId == resource.data.senderId
-        && request.resource.data.text == resource.data.text
-        && request.resource.data.imageUrls == resource.data.imageUrls
-        && request.resource.data.attachments == resource.data.attachments
-        && request.resource.data.type == resource.data.type
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.state in ['sent', 'delivered', 'read', 'failed']
-        && timestampOrNull(request.resource.data.deliveredAt)
-        && timestampOrNull(request.resource.data.readAt);
-    }
-
-    function validMessageChunk() {
-      return onlyKeys(['attachmentId', 'index', 'data'])
-        && request.resource.data.attachmentId is string
-        && request.resource.data.index is int
-        && request.resource.data.index >= 0
-        && request.resource.data.data is string
-        && request.resource.data.data.size() <= 800000;
-    }
-
     match /users/{uid} {
-      // Signed-in users need to read peer profiles for contact/chat avatars,
-      // phone display, online status, typing/active-chat presence, and last seen.
-      // Writes remain owner-only below.
       allow read: if signedIn();
-      allow create: if isSelf(uid) && validUserProfile(uid);
-      allow update: if isSelf(uid) && validPartialUserUpdate(uid);
+      allow create, update: if isSelf(uid);
       allow delete: if false;
 
       match /contacts/{contactId} {
-        allow read: if isSelf(uid);
-        allow create, update: if isSelf(uid) && validContact();
-        allow delete: if isSelf(uid);
+        allow read, write: if isSelf(uid);
       }
 
       match /calls/{callId} {
-        allow read: if isSelf(uid);
-        allow create, update: if isSelf(uid) && validCall();
-        allow delete: if isSelf(uid);
+        allow read, write: if isSelf(uid);
       }
     }
 
     match /phoneIndex/{phoneNumber} {
       allow read: if signedIn();
       allow create, update: if signedIn()
-        && onlyKeys([
-          'uid',
-          'phoneNumber',
-          'profileImageUrl',
-          'canCall',
-          'updatedAt'
-        ])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.phoneNumber is string
-        && stringOrNull(request.resource.data.profileImageUrl)
-        && request.resource.data.canCall is bool
-        && request.resource.data.updatedAt is timestamp;
+        && request.resource.data.uid == request.auth.uid;
       allow delete: if false;
     }
 
     match /chats/{chatId} {
-      allow read: if signedIn() && request.auth.uid in resource.data.participantIds;
-      allow create: if signedIn() && validChatCreate();
-      allow update: if signedIn() && validChatUpdate();
+      allow read: if isChatParticipant(chatId);
+      allow create: if signedIn()
+        && request.auth.uid in request.resource.data.participantIds;
+      allow update: if isChatParticipant(chatId);
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow read: if isChatParticipant(chatId);
-        allow create: if isChatParticipant(chatId) && validMessageCreate(chatId);
-        allow update: if isChatParticipant(chatId) && validMessageUpdate();
+        allow read, update: if isChatParticipant(chatId);
+        allow create: if isChatParticipant(chatId)
+          && request.resource.data.senderId == request.auth.uid;
         allow delete: if false;
 
         match /chunks/{chunkId} {
-          allow read: if isChatParticipant(chatId);
-          allow create: if isChatParticipant(chatId) && validMessageChunk();
+          allow read, create: if isChatParticipant(chatId);
           allow update, delete: if false;
         }
       }
