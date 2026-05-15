@@ -15,6 +15,11 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
     }
 
+    function isDeveloperAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'rsumit1618@gmail.com';
+    }
+
     match /users/{uid} {
       allow read: if signedIn();
       allow create, update: if isSelf(uid);
@@ -33,6 +38,12 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create, update: if signedIn()
         && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /appConfig/developerContact {
+      allow read: if signedIn();
+      allow create, update: if isDeveloperAdmin();
       allow delete: if false;
     }
 

@@ -8,6 +8,7 @@ import 'package:echo_me/core/widgets/app_avatar_image.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/app_user.dart';
+import 'package:echo_me/features/profile/developer_contact_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,6 +103,59 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         prefixIcon: Icon(Icons.mail_outline),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppCard(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DeveloperContactScreen(),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          colors: [
+                            Theme.of(context).colorScheme.primary,
+                            const Color(0xFF0EA5E9),
+                          ],
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.engineering_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Developer Contact',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'View app developer details and links',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded),
                   ],
                 ),
               ),

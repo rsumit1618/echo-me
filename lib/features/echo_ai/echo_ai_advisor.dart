@@ -166,7 +166,7 @@ const echoAiAdvisors = <EchoAiAdvisor>[
         'Code help, app ideas, debugging steps, tools, and learning technical concepts.',
     status: 'Problem solver',
     icon: Icons.terminal_rounded,
-    colors: [Color(0xFF111827), Color(0xFF3B82F6)],
+    colors: [Color(0xFF38BDF8), Color(0xFF2563EB)],
     prompts: [
       'Explain this error',
       'Help design an app feature',
