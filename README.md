@@ -89,9 +89,7 @@ Firebase files such as `android/app/google-services.json` and iOS Firebase files
 
 Want to try Echo Me without building the Flutter project? Install the release APK:
 
-```text
-docs/releases/Echo-Me-v1.0.0-release.apk
-```
+👉 [Download Echo Me v1.0.0 APK](docs/releases/Echo-Me-v1.0.0-release.apk)
 
 Tester flow:
 
@@ -103,9 +101,7 @@ Tester flow:
 
 APK checksum file:
 
-```text
-docs/releases/Echo-Me-v1.0.0-release.apk.sha1
-```
+🔎 [View APK SHA1 checksum](docs/releases/Echo-Me-v1.0.0-release.apk.sha1)
 
 ## Echo AI Backend Setup 🤖🔐
 
