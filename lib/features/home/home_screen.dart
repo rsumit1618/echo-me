@@ -1,8 +1,8 @@
 import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/core/widgets/app_avatar_image.dart';
-import 'package:echo_me/features/calls/call_history_screen.dart';
 import 'package:echo_me/features/chats/chats_screen.dart';
 import 'package:echo_me/features/contacts/contacts_screen.dart';
+import 'package:echo_me/features/echo_ai/echo_ai_screen.dart';
 import 'package:echo_me/features/profile/profile_screen.dart';
 import 'package:echo_me/features/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +16,7 @@ class HomeScreen extends ConsumerWidget {
   static const _screens = [
     ChatsScreen(),
     ContactsScreen(),
-    CallHistoryScreen(),
+    EchoAiScreen(),
     SettingsScreen(),
   ];
 
@@ -28,7 +28,25 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Echo Me'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Echo Me',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            Text(
+              index == 2 ? 'AI advisors ready' : 'Stay close, chat smoothly',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -86,9 +104,9 @@ class HomeScreen extends ConsumerWidget {
             label: 'Contacts',
           ),
           NavigationDestination(
-            icon: Icon(Icons.call_outlined),
-            selectedIcon: Icon(Icons.call),
-            label: 'Call History',
+            icon: Icon(Icons.auto_awesome_outlined),
+            selectedIcon: Icon(Icons.auto_awesome),
+            label: 'Echo AI',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

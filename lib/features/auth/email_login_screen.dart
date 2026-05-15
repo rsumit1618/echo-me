@@ -114,11 +114,35 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
           padding: const EdgeInsets.all(24),
           children: [
             const SizedBox(height: 42),
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-              child: const Icon(Icons.mark_email_unread_outlined, size: 30),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    const Color(0xFF0EA5E9),
+                    Theme.of(context).colorScheme.tertiary,
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: .24),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.mark_email_unread_outlined,
+                color: Colors.white,
+                size: 30,
+              ),
             ),
             const SizedBox(height: 22),
             Text(
@@ -136,6 +160,16 @@ class _EmailLoginScreenState extends ConsumerState<EmailLoginScreen> {
             ),
             const SizedBox(height: 28),
             AppCard(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.surface,
+                  Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: .62),
+                ],
+              ),
               child: Column(
                 children: [
                   TextField(

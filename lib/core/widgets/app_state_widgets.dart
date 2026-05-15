@@ -6,7 +6,34 @@ class AppLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator());
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Container(
+        width: 68,
+        height: 68,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          gradient: LinearGradient(
+            colors: [colorScheme.primary, colorScheme.tertiary],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.primary.withValues(alpha: .24),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: const SizedBox.square(
+          dimension: 26,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.6,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
   }
 }
 

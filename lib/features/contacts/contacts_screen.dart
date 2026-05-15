@@ -127,6 +127,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
                               const SizedBox(height: 12),
                           itemBuilder: (_, index) {
                             return _ContactTile(
+                              index: index,
                               contact: visibleContacts[index],
                             );
                           },
@@ -212,8 +213,9 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
 
 class _ContactTile extends ConsumerWidget {
   final AppContact contact;
+  final int index;
 
-  const _ContactTile({required this.contact});
+  const _ContactTile({required this.contact, required this.index});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -221,71 +223,120 @@ class _ContactTile extends ConsumerWidget {
     final actionStyle = _ContactActionStyle.from(context, contact.action);
     final compact = MediaQuery.sizeOf(context).width < 390;
     final buttonWidth = compact ? 112.0 : 132.0;
+    final colors = _contactAccent(index, contact.action);
 
-    return AppCard(
-      onTap: () => _handleAction(context, ref),
-      child: Row(
-        children: [
-          _ContactAvatar(
-            displayName: contact.displayName,
-            imageUrl: contact.profileImageUrl,
-            backgroundColor: actionStyle.avatarColor,
-            foregroundColor: actionStyle.avatarForeground,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  contact.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w800,
+    return AnimatedListItem(
+      index: index,
+      child: AppCard(
+        onTap: () => _handleAction(context, ref),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ContactAvatar(
+              displayName: contact.displayName,
+              imageUrl: contact.profileImageUrl,
+              colors: colors,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    contact.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    contact.normalizedPhone,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.verified_rounded,
+                        size: 16,
+                        color: colors.first,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          contact.action == ContactAction.chatNow
+                              ? 'Available on Echo Me'
+                              : contact.action == ContactAction.invite
+                              ? 'Invite to start chatting'
+                              : 'Voice contact',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: buttonWidth,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: actionStyle.buttonColor,
+                  foregroundColor: actionStyle.buttonForeground,
+                  padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
+                  minimumSize: Size(buttonWidth, compact ? 48 : 52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: () => _handleAction(context, ref),
+                icon: Icon(_getIcon(contact.action), size: compact ? 17 : 18),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _getLabel(contact.action),
+                    maxLines: 1,
+                    softWrap: false,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  contact.normalizedPhone,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: buttonWidth,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: actionStyle.buttonColor,
-                foregroundColor: actionStyle.buttonForeground,
-                padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
-                minimumSize: Size(buttonWidth, compact ? 48 : 52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                textStyle: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-              onPressed: () => _handleAction(context, ref),
-              icon: Icon(_getIcon(contact.action), size: compact ? 17 : 18),
-              label: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  _getLabel(contact.action),
-                  maxLines: 1,
-                  softWrap: false,
-                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  List<Color> _contactAccent(int index, ContactAction action) {
+    if (action == ContactAction.invite) {
+      return const [Color(0xFFFF7A18), Color(0xFFFFD166)];
+    }
+    if (action == ContactAction.call) {
+      return const [Color(0xFF7C3AED), Color(0xFF38BDF8)];
+    }
+    const palettes = [
+      [Color(0xFF2563EB), Color(0xFF22D3EE)],
+      [Color(0xFF00A86B), Color(0xFF7CE7AC)],
+      [Color(0xFFEF4E7B), Color(0xFFFFB86C)],
+      [Color(0xFF0EA5E9), Color(0xFF8B5CF6)],
+    ];
+    return palettes[index % palettes.length];
   }
 
   String _getLabel(ContactAction action) {
@@ -354,28 +405,44 @@ class _ContactTile extends ConsumerWidget {
 class _ContactAvatar extends StatelessWidget {
   final String displayName;
   final String? imageUrl;
-  final Color backgroundColor;
-  final Color foregroundColor;
+  final List<Color> colors;
 
   const _ContactAvatar({
     required this.displayName,
     required this.imageUrl,
-    required this.backgroundColor,
-    required this.foregroundColor,
+    required this.colors,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AppAvatarImage(
-      imageUrl: imageUrl,
-      radius: MediaQuery.sizeOf(context).width < 390 ? 25 : 28,
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
-      fallback: Text(
-        _initials(displayName),
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          color: foregroundColor,
-          fontWeight: FontWeight.w900,
+    final radius = MediaQuery.sizeOf(context).width < 390 ? 25.0 : 28.0;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(colors: colors),
+        boxShadow: [
+          BoxShadow(
+            color: colors.first.withValues(alpha: .24),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: AppAvatarImage(
+          imageUrl: imageUrl,
+          radius: radius,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          foregroundColor: colors.first,
+          fallback: Text(
+            _initials(displayName),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: colors.first,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
       ),
     );
@@ -396,14 +463,10 @@ class _ContactAvatar extends StatelessWidget {
 }
 
 class _ContactActionStyle {
-  final Color avatarColor;
-  final Color avatarForeground;
   final Color buttonColor;
   final Color buttonForeground;
 
   const _ContactActionStyle({
-    required this.avatarColor,
-    required this.avatarForeground,
     required this.buttonColor,
     required this.buttonForeground,
   });
@@ -414,24 +477,16 @@ class _ContactActionStyle {
 
     return switch (action) {
       ContactAction.chatNow => _ContactActionStyle(
-        avatarColor: colorScheme.primaryContainer,
-        avatarForeground: colorScheme.onPrimaryContainer,
         buttonColor: colorScheme.primaryContainer,
         buttonForeground: colorScheme.onPrimaryContainer,
       ),
       ContactAction.invite => _ContactActionStyle(
-        avatarColor: isDark ? const Color(0xFF5C3F15) : const Color(0xFFFFE1B8),
-        avatarForeground: isDark
-            ? const Color(0xFFFFD9A3)
-            : const Color(0xFF4A2A00),
         buttonColor: isDark ? const Color(0xFF6B4314) : const Color(0xFFFFD29A),
         buttonForeground: isDark
             ? const Color(0xFFFFE6C7)
             : const Color(0xFF3D2500),
       ),
       ContactAction.call => _ContactActionStyle(
-        avatarColor: colorScheme.tertiaryContainer,
-        avatarForeground: colorScheme.onTertiaryContainer,
         buttonColor: colorScheme.tertiaryContainer,
         buttonForeground: colorScheme.onTertiaryContainer,
       ),

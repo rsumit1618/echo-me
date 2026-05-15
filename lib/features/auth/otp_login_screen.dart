@@ -126,15 +126,35 @@ class _MobileVerificationScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer,
-                    foregroundColor: Theme.of(
-                      context,
-                    ).colorScheme.onPrimaryContainer,
-                    child: const Icon(Icons.chat_bubble, size: 30),
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          const Color(0xFF0EA5E9),
+                          Theme.of(context).colorScheme.tertiary,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: .24),
+                          blurRadius: 24,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.chat_bubble,
+                      color: Colors.white,
+                      size: 30,
+                    ),
                   ),
                   const SizedBox(height: 22),
                   Text(
@@ -159,6 +179,16 @@ class _MobileVerificationScreenState
             ),
             const SizedBox(height: 28),
             AppCard(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.surface,
+                  Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: .62),
+                ],
+              ),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 260),
                 switchInCurve: Curves.easeOutCubic,

@@ -48,6 +48,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             padding: const EdgeInsets.all(24),
             children: [
               AppCard(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    const Color(0xFF0EA5E9),
+                    Theme.of(context).colorScheme.tertiary,
+                  ],
+                ),
+                border: Border.all(color: Colors.white.withValues(alpha: .18)),
                 padding: const EdgeInsets.all(22),
                 child: Column(
                   children: [
@@ -56,6 +66,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(
                       user.phoneNumber,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -63,7 +74,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Text(
                       'Tap photo to update profile image',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: Colors.white.withValues(alpha: .86),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -203,12 +215,9 @@ class _Avatar extends StatelessWidget {
         duration: const Duration(milliseconds: 240),
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(8),
           gradient: LinearGradient(
-            colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.tertiary,
-            ],
+            colors: [Colors.white, Colors.white.withValues(alpha: .72)],
           ),
           boxShadow: [
             BoxShadow(

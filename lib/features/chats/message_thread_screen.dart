@@ -59,6 +59,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     final chat = ref.watch(chatProvider(widget.chatId));
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: chat.when(
           data: (value) => _ChatTitle(chat: value),
@@ -117,8 +118,8 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                               if (item is _DateTimelineItem) {
                                 return _DateSeparator(label: item.label);
                               }
-                              final message = (item as _MessageTimelineItem)
-                                  .message;
+                              final message =
+                                  (item as _MessageTimelineItem).message;
                               return _MessageBubble(
                                 key: ValueKey(message.id),
                                 message: message,
@@ -185,10 +186,23 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                                     ),
                                   ),
                                 )
-                              : IconButton(
-                                  tooltip: 'Send',
-                                  onPressed: _sendText,
-                                  icon: const Icon(Icons.send_rounded),
+                              : Container(
+                                  key: const ValueKey('send'),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Theme.of(context).colorScheme.primary,
+                                        Theme.of(context).colorScheme.tertiary,
+                                      ],
+                                    ),
+                                  ),
+                                  child: IconButton(
+                                    tooltip: 'Send',
+                                    onPressed: _sendText,
+                                    color: Colors.white,
+                                    icon: const Icon(Icons.send_rounded),
+                                  ),
                                 ),
                         ),
                       ],
@@ -324,10 +338,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     final message = _text.text;
     if (message.trim().isEmpty) return;
     _text.clear();
-    Future<void>.delayed(
-      const Duration(milliseconds: 80),
-      _scrollToLatest,
-    );
+    Future<void>.delayed(const Duration(milliseconds: 80), _scrollToLatest);
     try {
       await ref
           .read(messageThreadControllerProvider(widget.chatId))
@@ -566,10 +577,12 @@ class _MessageBubble extends ConsumerWidget {
     final bubbleColor = isMe
         ? colorScheme.primaryContainer
         : colorScheme.surfaceContainerHighest;
-    final textColor = isMe
-        ? colorScheme.onPrimaryContainer
-        : colorScheme.onSurfaceVariant;
-    final receiptColor = message.state == MessageState.read
+    final textColor = isMe ? Colors.white : colorScheme.onSurfaceVariant;
+    final receiptColor = isMe
+        ? Colors.white.withValues(
+            alpha: message.state == MessageState.read ? .95 : .68,
+          )
+        : message.state == MessageState.read
         ? colorScheme.primary
         : textColor.withValues(alpha: .65);
     return Align(
@@ -581,7 +594,14 @@ class _MessageBubble extends ConsumerWidget {
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
           decoration: BoxDecoration(
-            color: bubbleColor,
+            color: isMe ? null : bubbleColor,
+            gradient: isMe
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [colorScheme.primary, const Color(0xFF0EA5E9)],
+                  )
+                : null,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(18),
               topRight: const Radius.circular(18),
@@ -590,7 +610,7 @@ class _MessageBubble extends ConsumerWidget {
             ),
             border: Border.all(
               color: isMe
-                  ? colorScheme.primary.withValues(alpha: .18)
+                  ? Colors.white.withValues(alpha: .16)
                   : colorScheme.outlineVariant.withValues(alpha: .45),
             ),
             boxShadow: [
@@ -635,8 +655,9 @@ class _MessageBubble extends ConsumerWidget {
                     children: [
                       Text(
                         DateFormat.Hm().format(message.createdAt),
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(color: textColor.withValues(alpha: .7)),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: textColor.withValues(alpha: .7),
+                        ),
                       ),
                       if (isMe) ...[
                         const SizedBox(width: 4),
@@ -887,9 +908,7 @@ class _PdfAttachmentPreview extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.message(error))),
-        );
+        ).showSnackBar(SnackBar(content: Text(AppErrorMapper.message(error))));
       }
     }
   }

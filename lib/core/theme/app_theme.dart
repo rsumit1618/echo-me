@@ -12,27 +12,31 @@ class AppTheme {
   }
 
   static ThemeData light() {
-    const seed = Color(0xFF0F9D58);
+    const seed = Color(0xFF2481F2);
     return _base(
       ColorScheme.fromSeed(
         seedColor: seed,
-        surface: const Color(0xFFF8FAF9),
-        surfaceContainerHighest: const Color(0xFFE8F2ED),
+        secondary: const Color(0xFF0EA5E9),
+        tertiary: const Color(0xFF10B981),
+        surface: const Color(0xFFF8FBFF),
+        surfaceContainerHighest: const Color(0xFFEAF4FF),
       ),
-      scaffoldBackgroundColor: const Color(0xFFF3F7F5),
+      scaffoldBackgroundColor: const Color(0xFFF3F8FF),
     );
   }
 
   static ThemeData dark() {
-    const seed = Color(0xFF36C17A);
+    const seed = Color(0xFF54A3FF);
     return _base(
       ColorScheme.fromSeed(
         seedColor: seed,
         brightness: Brightness.dark,
-        surface: const Color(0xFF151A18),
-        surfaceContainerHighest: const Color(0xFF25302B),
+        secondary: const Color(0xFF38BDF8),
+        tertiary: const Color(0xFF34D399),
+        surface: const Color(0xFF111827),
+        surfaceContainerHighest: const Color(0xFF1F2A44),
       ),
-      scaffoldBackgroundColor: const Color(0xFF0F1412),
+      scaffoldBackgroundColor: const Color(0xFF0B1220),
     );
   }
 
@@ -79,7 +83,7 @@ class AppTheme {
             centerTitle: false,
             elevation: 0,
             scrolledUnderElevation: 0,
-            backgroundColor: colorScheme.surface,
+            backgroundColor: scaffoldBackgroundColor ?? colorScheme.surface,
             foregroundColor: colorScheme.onSurface,
             titleTextStyle: TextStyle(
               color: colorScheme.onSurface,
@@ -94,7 +98,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: .42),
+        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: .55),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(color: colorScheme.outlineVariant),
@@ -121,6 +125,9 @@ class AppTheme {
           navigationBarTheme ??
           NavigationBarThemeData(
             height: 72,
+            backgroundColor: colorScheme.surface.withValues(alpha: .94),
+            shadowColor: colorScheme.shadow.withValues(alpha: .12),
+            indicatorColor: colorScheme.primaryContainer.withValues(alpha: .72),
             indicatorShape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
             ),

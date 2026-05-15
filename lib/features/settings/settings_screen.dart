@@ -15,14 +15,29 @@ class SettingsScreen extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
       children: [
         AppCard(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              const Color(0xFF0EA5E9),
+              Theme.of(context).colorScheme.tertiary,
+            ],
+          ),
+          border: Border.all(color: Colors.white.withValues(alpha: .18)),
           child: Row(
             children: [
-              CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                foregroundColor: Theme.of(
-                  context,
-                ).colorScheme.onPrimaryContainer,
-                child: const Icon(Icons.palette_outlined),
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .18),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .24),
+                  ),
+                ),
+                child: const Icon(Icons.palette_outlined, color: Colors.white),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -32,6 +47,7 @@ class SettingsScreen extends ConsumerWidget {
                     Text(
                       'Theme',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -39,7 +55,7 @@ class SettingsScreen extends ConsumerWidget {
                     Text(
                       'Persisted locally on this device',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: Colors.white.withValues(alpha: .86),
                       ),
                     ),
                   ],
@@ -272,15 +288,22 @@ class _ThemeOption extends ConsumerWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
+                gradient: selected
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [previewScheme.primary, previewScheme.tertiary],
+                      )
+                    : null,
                 color: selected
-                    ? Theme.of(context).colorScheme.primaryContainer
+                    ? null
                     : Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
                 color: selected
-                    ? Theme.of(context).colorScheme.onPrimaryContainer
+                    ? Colors.white
                     : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),

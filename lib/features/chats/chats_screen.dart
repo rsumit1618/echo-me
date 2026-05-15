@@ -47,6 +47,7 @@ class ChatsScreen extends ConsumerWidget {
                 ? 0
                 : chat.unreadCounts[currentUid] ?? 0;
             final hasUnread = unreadCount > 0;
+            final accent = _chatAccent(index);
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: AnimatedListItem(
@@ -59,10 +60,12 @@ class ChatsScreen extends ConsumerWidget {
                     ),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _ChatAvatar(
                         title: _chatTitle(chat, peerId),
                         imageUrl: imageUrl,
+                        colors: accent,
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -93,6 +96,32 @@ class ChatsScreen extends ConsumerWidget {
                                     ? FontWeight.w700
                                     : FontWeight.w400,
                               ),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.bolt_rounded,
+                                  size: 16,
+                                  color: hasUnread
+                                      ? accent.first
+                                      : colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    hasUnread
+                                        ? 'New message waiting'
+                                        : 'Tap to open conversation',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: textTheme.labelMedium?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -159,6 +188,18 @@ class ChatsScreen extends ConsumerWidget {
     if (date == today) return DateFormat.Hm().format(value);
     if (date == today.subtract(const Duration(days: 1))) return 'Yesterday';
     return DateFormat('d MMMM yyyy').format(value);
+  }
+
+  List<Color> _chatAccent(int index) {
+    const palettes = [
+      [Color(0xFF2563EB), Color(0xFF22D3EE)],
+      [Color(0xFF7C3AED), Color(0xFF38BDF8)],
+      [Color(0xFF00A86B), Color(0xFF7CE7AC)],
+      [Color(0xFFEF4E7B), Color(0xFFFFB86C)],
+      [Color(0xFF0EA5E9), Color(0xFF8B5CF6)],
+      [Color(0xFF334155), Color(0xFF14B8A6)],
+    ];
+    return palettes[index % palettes.length];
   }
 }
 
@@ -234,22 +275,48 @@ class _ChatMeta extends StatelessWidget {
 class _ChatAvatar extends StatelessWidget {
   final String title;
   final String? imageUrl;
+  final List<Color> colors;
 
-  const _ChatAvatar({required this.title, required this.imageUrl});
+  const _ChatAvatar({
+    required this.title,
+    required this.imageUrl,
+    required this.colors,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return AppAvatarImage(
-      imageUrl: imageUrl,
-      radius: 30,
-      backgroundColor: colorScheme.primaryContainer,
-      foregroundColor: colorScheme.onPrimaryContainer,
-      fallback: Text(
-        _initials(title),
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          color: colorScheme.onPrimaryContainer,
-          fontWeight: FontWeight.w900,
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.first.withValues(alpha: .24),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: AppAvatarImage(
+          imageUrl: imageUrl,
+          radius: 28,
+          backgroundColor: colorScheme.surface,
+          foregroundColor: colors.first,
+          fallback: Text(
+            _initials(title),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: colors.first,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
       ),
     );

@@ -6,6 +6,9 @@ class AppCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double? width;
   final double radius;
+  final Gradient? gradient;
+  final Color? color;
+  final Border? border;
 
   const AppCard({
     super.key,
@@ -14,6 +17,9 @@ class AppCard extends StatelessWidget {
     this.onTap,
     this.width,
     this.radius = 8,
+    this.gradient,
+    this.color,
+    this.border,
   });
 
   @override
@@ -23,23 +29,35 @@ class AppCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: BoxConstraints(minWidth: width ?? double.infinity),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: colorScheme.surface,
+          color: gradient == null ? color ?? colorScheme.surface : null,
+          gradient: gradient,
           borderRadius: BorderRadius.circular(radius),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: .55),
-          ),
+          border:
+              border ??
+              Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: .48),
+              ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
+              color: colorScheme.primary.withValues(
+                alpha: Theme.of(context).brightness == Brightness.dark
+                    ? .11
+                    : .08,
+              ),
+              blurRadius: 26,
+              offset: const Offset(0, 14),
+            ),
+            BoxShadow(
+              color: colorScheme.shadow.withValues(
                 alpha: Theme.of(context).brightness == Brightness.dark
                     ? .22
-                    : .07,
+                    : .04,
               ),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
@@ -69,11 +87,15 @@ class AnimatedListItem extends StatelessWidget {
       duration: Duration(milliseconds: 260 + (index.clamp(0, 8) * 35)),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
+        final scale = .985 + (.015 * value);
         return Align(
           alignment: Alignment.topCenter,
-          child: Transform.translate(
-            offset: Offset(0, 18 * (1 - value)),
-            child: Opacity(opacity: value, child: child),
+          child: Transform.scale(
+            scale: scale,
+            child: Transform.translate(
+              offset: Offset(0, 18 * (1 - value)),
+              child: Opacity(opacity: value, child: child),
+            ),
           ),
         );
       },
