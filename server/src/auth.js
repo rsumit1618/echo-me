@@ -1,7 +1,7 @@
 import admin from 'firebase-admin';
 
-function initializeFirebaseAdmin() {
-  if (admin.apps.length > 0) return;
+function getFirebaseAdmin() {
+  if (admin.apps.length > 0) return admin;
 
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (serviceAccountJson && serviceAccountJson.trim().length > 0) {
@@ -9,15 +9,14 @@ function initializeFirebaseAdmin() {
       credential: admin.credential.cert(JSON.parse(serviceAccountJson)),
       projectId: process.env.FIREBASE_PROJECT_ID,
     });
-    return;
+    return admin;
   }
 
   admin.initializeApp({
     projectId: process.env.FIREBASE_PROJECT_ID,
   });
+  return admin;
 }
-
-initializeFirebaseAdmin();
 
 export { admin };
 
@@ -31,7 +30,7 @@ export async function verifyAuthorizationHeader(authHeader = '') {
     throw error;
   }
 
-  return admin.auth().verifyIdToken(token);
+  return getFirebaseAdmin().auth().verifyIdToken(token);
 }
 
 export async function requireFirebaseUser(req, res, next) {
