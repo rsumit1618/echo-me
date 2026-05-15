@@ -85,6 +85,28 @@ flutter run
 
 Firebase files such as `android/app/google-services.json` and iOS Firebase files must match your own Firebase project if you are setting this up fresh.
 
+## Tester APK 🎉📲
+
+Want to try Echo Me without building the Flutter project? Install the release APK:
+
+```text
+docs/releases/Echo-Me-v1.0.0-release.apk
+```
+
+Tester flow:
+
+1. Download the APK from the repository.
+2. Install it on an Android device.
+3. Allow installation from unknown sources if Android asks.
+4. Login with one of the test accounts below.
+5. Try Chats, Contacts, Echo AI, Themes, and Profile. Have fun testing. 🚀
+
+APK checksum file:
+
+```text
+docs/releases/Echo-Me-v1.0.0-release.apk.sha1
+```
+
 ## Echo AI Backend Setup 🤖🔐
 
 The backend lives in `server/`. It must be deployed separately or run locally.
