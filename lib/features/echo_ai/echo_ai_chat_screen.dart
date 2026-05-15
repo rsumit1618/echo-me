@@ -86,15 +86,10 @@ class _EchoAiChatScreenState extends ConsumerState<EchoAiChatScreen> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              itemCount: state.messages.length + (state.sending ? 1 : 0),
+              itemCount: state.messages.length,
               itemBuilder: (context, index) {
-                if (index == state.messages.length) {
-                  return _TypingBubble(advisor: widget.advisor);
-                }
                 return _EchoAiBubble(
                   message: state.messages[index],
                   advisor: widget.advisor,
@@ -151,12 +146,13 @@ class _EchoAiChatScreenState extends ConsumerState<EchoAiChatScreen> {
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 180),
                       child: state.sending
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
+                          ? Padding(
+                              padding: const EdgeInsets.all(12),
                               child: SizedBox.square(
-                                dimension: 18,
+                                dimension: 16,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                             )
@@ -193,8 +189,8 @@ class _EchoAiChatScreenState extends ConsumerState<EchoAiChatScreen> {
     if (!_scrollController.hasClients) return;
     await _scrollController.animateTo(
       _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
     );
   }
 }
@@ -271,56 +267,6 @@ class _PromptChips extends StatelessWidget {
   }
 }
 
-class _TypingBubble extends StatelessWidget {
-  final EchoAiAdvisor advisor;
-
-  const _TypingBubble({required this.advisor});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            topRight: Radius.circular(18),
-            bottomRight: Radius.circular(18),
-            bottomLeft: Radius.circular(4),
-          ),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: .7),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox.square(
-              dimension: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: advisor.colors.first,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '${advisor.name} is thinking...',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _EchoAiBubble extends StatelessWidget {
   final EchoAiMessage message;
   final EchoAiAdvisor advisor;
@@ -332,8 +278,8 @@ class _EchoAiBubble extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isUser = message.isUser;
     final bubbleColor = isUser
-        ? colorScheme.primaryContainer
-        : colorScheme.surface;
+        ? colorScheme.primary.withValues(alpha: .12)
+        : colorScheme.surfaceContainerHighest.withValues(alpha: .55);
     final textColor = isUser
         ? colorScheme.onPrimaryContainer
         : colorScheme.onSurface;
@@ -346,52 +292,32 @@ class _EchoAiBubble extends StatelessWidget {
         ),
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
+          padding: const EdgeInsets.fromLTRB(12, 8, 10, 6),
           decoration: BoxDecoration(
             color: bubbleColor,
             borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(isUser ? 18 : 4),
-              bottomRight: Radius.circular(isUser ? 4 : 18),
+              topLeft: const Radius.circular(14),
+              topRight: const Radius.circular(14),
+              bottomLeft: Radius.circular(isUser ? 14 : 5),
+              bottomRight: Radius.circular(isUser ? 5 : 14),
             ),
             border: Border.all(
               color: isUser
-                  ? colorScheme.primary.withValues(alpha: .28)
-                  : advisor.colors.first.withValues(alpha: .24),
+                  ? colorScheme.primary.withValues(alpha: .16)
+                  : colorScheme.outlineVariant.withValues(alpha: .55),
             ),
-            boxShadow: const [],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!isUser)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 7),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(advisor.icon, size: 16, color: advisor.colors.first),
-                      const SizedBox(width: 6),
-                      Text(
-                        advisor.name,
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: advisor.colors.first,
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
               Text(
                 _cleanAiText(message.text),
                 style: TextStyle(
                   color: textColor,
-                  fontSize: 16,
-                  height: 1.36,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 15.8,
+                  height: 1.34,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
               const SizedBox(height: 5),
