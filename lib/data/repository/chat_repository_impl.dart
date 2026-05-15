@@ -296,12 +296,14 @@ class ChatRepositoryImpl implements ChatRepository {
       ...unreadUpdates,
     }, SetOptions(merge: true));
     await batch.commit();
-    await _queueOfflineNotifications(
-      chatId: chatId,
-      messageId: id,
-      recipients: recipients,
-      text: _notificationPreview(message),
-    );
+    // Notifications are paused for now. Re-enable this after adding a trusted
+    // server that sends FCM securely.
+    // await _queueOfflineNotifications(
+    //   chatId: chatId,
+    //   messageId: id,
+    //   recipients: recipients,
+    //   text: _notificationPreview(message),
+    // );
     await _local.cacheMessage({
       'id': id,
       'chatId': chatId,
@@ -314,6 +316,7 @@ class ChatRepositoryImpl implements ChatRepository {
     });
   }
 
+  // ignore: unused_element
   Future<void> _queueOfflineNotifications({
     required String chatId,
     required String messageId,
@@ -398,6 +401,7 @@ class ChatRepositoryImpl implements ChatRepository {
     }).toList();
   }
 
+  // ignore: unused_element
   String _notificationPreview(Message message) {
     final text = message.text?.trim();
     if (text != null && text.isNotEmpty) return text;

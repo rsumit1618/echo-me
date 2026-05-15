@@ -14,6 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 class AuthRepositoryImpl implements AuthRepository {
   final FirebaseAuthService _auth;
   final FirestoreService _firestore;
+  // ignore: unused_field
   final NotificationService _notifications;
   final FQLiteService _local;
 
@@ -210,7 +211,10 @@ class AuthRepositoryImpl implements AuthRepository {
     if (phone == null) {
       throw const AppException('Firebase did not return a mobile number.');
     }
-    final token = await _notifications.prepareDeviceToken();
+    // Notifications are paused for now. Re-enable this when the trusted
+    // notification server is ready.
+    // final token = await _notifications.prepareDeviceToken();
+    const token = null;
     final ref = _firestore.users.doc(fbUser.uid);
     final snapshot = await ref.get();
     final now = DateTime.now();

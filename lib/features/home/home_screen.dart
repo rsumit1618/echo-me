@@ -22,7 +22,7 @@ class HomeScreen extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final currentUser = ref.watch(authStateProvider).valueOrNull;
     final index = ref.watch(homeTabIndexProvider);
