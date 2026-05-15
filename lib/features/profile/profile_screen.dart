@@ -8,7 +8,6 @@ import 'package:echo_me/core/widgets/app_avatar_image.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/app_user.dart';
-import 'package:echo_me/features/profile/developer_contact_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,7 +106,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 28),
-              _ProfileFooter(onDeveloperTap: _openDeveloperContact),
+              const _ProfileFooter(),
             ],
           );
         },
@@ -191,12 +190,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) ref.read(profileSavingProvider.notifier).state = false;
     }
   }
-
-  void _openDeveloperContact() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const DeveloperContactScreen()));
-  }
 }
 
 String _encodeProfileImageDataUrl(List<int> bytes) {
@@ -267,9 +260,7 @@ class _Avatar extends StatelessWidget {
 }
 
 class _ProfileFooter extends StatelessWidget {
-  final VoidCallback onDeveloperTap;
-
-  const _ProfileFooter({required this.onDeveloperTap});
+  const _ProfileFooter();
 
   @override
   Widget build(BuildContext context) {
@@ -291,24 +282,6 @@ class _ProfileFooter extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text('|', style: TextStyle(color: colorScheme.outline)),
-              InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: onDeveloperTap,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 4,
-                  ),
-                  child: Text(
-                    'Developer Contact',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
                 ),
               ),
             ],
