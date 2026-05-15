@@ -56,3 +56,32 @@ Body:
   ]
 }
 ```
+
+## Deploy on Vercel
+
+Push the `server` folder to GitHub first. In Vercel, import the same repo and choose:
+
+```text
+Root Directory: server
+Framework Preset: Other
+Install Command: npm install
+Build Command: leave empty
+Output Directory: leave empty
+```
+
+Add these environment variables in Vercel Project Settings:
+
+```env
+GEMINI_API_KEY=your_google_ai_studio_key
+GEMINI_MODEL=gemini-2.5-flash-lite
+AI_DAILY_LIMIT_PER_USER=30
+AI_PER_MINUTE_LIMIT_PER_USER=3
+FIREBASE_PROJECT_ID=echo-me-fe509
+FIREBASE_SERVICE_ACCOUNT_JSON=your_firebase_service_account_json
+```
+
+After deploy, test:
+
+```text
+https://your-vercel-domain.vercel.app/api/health
+```

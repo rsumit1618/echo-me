@@ -21,16 +21,22 @@ initializeFirebaseAdmin();
 
 export { admin };
 
+export async function verifyAuthorizationHeader(authHeader = '') {
+  const [scheme, token] = authHeader.split(' ');
+
+  if (scheme !== 'Bearer' || !token) {
+    const error = new Error('Login is required.');
+    error.status = 401;
+    error.publicMessage = 'Login is required.';
+    throw error;
+  }
+
+  return admin.auth().verifyIdToken(token);
+}
+
 export async function requireFirebaseUser(req, res, next) {
   try {
-    const authHeader = req.header('authorization') ?? '';
-    const [scheme, token] = authHeader.split(' ');
-
-    if (scheme !== 'Bearer' || !token) {
-      return res.status(401).json({ error: 'Login is required.' });
-    }
-
-    req.user = await admin.auth().verifyIdToken(token);
+    req.user = await verifyAuthorizationHeader(req.header('authorization') ?? '');
     return next();
   } catch (_) {
     return res.status(401).json({ error: 'Login is required.' });

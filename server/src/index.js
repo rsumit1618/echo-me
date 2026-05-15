@@ -3,9 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import { requireFirebaseUser } from './auth.js';
-import { getAdvisor } from './advisors.js';
-import { generateGeminiReply } from './geminiClient.js';
-import { enforceAiUsageLimit } from './usageLimiter.js';
+import { handleEchoAiChat } from './echoAiHandler.js';
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -20,24 +18,8 @@ app.get('/health', (_, res) => {
 
 app.post('/api/echo-ai/chat', requireFirebaseUser, async (req, res) => {
   try {
-    const advisor = getAdvisor(req.body?.advisorId);
-    const messages = normalizeMessages(req.body?.messages);
-
-    if (messages.length === 0) {
-      return res.status(400).json({ error: 'Message is required.' });
-    }
-
-    await enforceAiUsageLimit(req.user.uid);
-
-    const reply = await generateGeminiReply({
-      advisor,
-      messages,
-    });
-
-    return res.json({
-      advisor: advisor.name,
-      reply,
-    });
+    const result = await handleEchoAiChat({ body: req.body, user: req.user });
+    return res.json(result);
   } catch (error) {
     console.error('echo-ai chat failed', error);
     return res.status(error.status || 500).json({
@@ -56,15 +38,3 @@ app.use((_, res) => {
 app.listen(port, () => {
   console.log(`Echo Me AI server listening on port ${port}`);
 });
-
-function normalizeMessages(value) {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .map((message) => ({
-      role: message?.role === 'assistant' ? 'assistant' : 'user',
-      content: String(message?.content ?? '').trim(),
-    }))
-    .filter((message) => message.content.length > 0)
-    .slice(-16);
-}
