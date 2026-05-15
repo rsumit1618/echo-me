@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/widgets/app_avatar_image.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/chat.dart';
@@ -241,36 +240,19 @@ class _ChatAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final image = _imageProvider(imageUrl);
-    return CircleAvatar(
+    return AppAvatarImage(
+      imageUrl: imageUrl,
       radius: 30,
       backgroundColor: colorScheme.primaryContainer,
-      foregroundImage: image,
-      child: image == null
-          ? Text(
-              _initials(title),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w900,
-              ),
-            )
-          : null,
+      foregroundColor: colorScheme.onPrimaryContainer,
+      fallback: Text(
+        _initials(title),
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          color: colorScheme.onPrimaryContainer,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
-  }
-
-  ImageProvider? _imageProvider(String? value) {
-    try {
-      final image = value?.trim();
-      if (image == null || image.isEmpty) return null;
-      if (image.startsWith('data:image')) {
-        final commaIndex = image.indexOf(',');
-        if (commaIndex == -1) return null;
-        return MemoryImage(base64Decode(image.substring(commaIndex + 1)));
-      }
-      return NetworkImage(image);
-    } catch (_) {
-      return null;
-    }
   }
 
   String _initials(String title) {

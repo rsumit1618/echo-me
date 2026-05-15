@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/core/errors/app_exception.dart';
+import 'package:echo_me/core/widgets/app_avatar_image.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/chat.dart';
@@ -15,6 +16,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+
+const int _messagePageSize = 30;
 
 class MessageThreadScreen extends ConsumerStatefulWidget {
   final String chatId;
@@ -33,6 +36,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   final _picker = ImagePicker();
   final _scrollController = ScrollController();
   String? _latestMessageId;
+  String? _latestReadMessageId;
 
   @override
   void initState() {
@@ -52,11 +56,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     final controller = ref.watch(
       messageThreadControllerProvider(widget.chatId),
     );
-    final uiState =
-        ref.watch(messageThreadUiProvider(widget.chatId)).valueOrNull ??
-        controller.state;
     final chat = ref.watch(chatProvider(widget.chatId));
-    final messages = ref.watch(messagesProvider(widget.chatId));
 
     return Scaffold(
       appBar: AppBar(
@@ -69,105 +69,132 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
       body: Column(
         children: [
           Expanded(
-            child: messages.when(
-              data: (items) {
-                Future.microtask(() => controller.markRead());
-                final allMessages = [
-                  ...uiState.optimisticMessages.where(
-                    (local) => !items.any((item) => item.text == local.text),
-                  ),
-                  ...items,
-                  ...uiState.olderMessages.where(
-                    (older) => !items.any((item) => item.id == older.id),
-                  ),
-                ];
-                _scheduleScrollForNewMessage(items);
-                return allMessages.isEmpty
-                    ? const EmptyStateCard(
-                        icon: Icons.waving_hand_outlined,
-                        title: 'Say hello',
-                        message: 'Send a message or attach an image or PDF.',
-                      )
-                    : ListView.builder(
-                        reverse: true,
-                        controller: _scrollController,
-                        physics: const BouncingScrollPhysics(
-                          parent: AlwaysScrollableScrollPhysics(),
-                        ),
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        cacheExtent: 640,
-                        padding: const EdgeInsets.all(12),
-                        itemCount: allMessages.length + 1,
-                        itemBuilder: (_, index) {
-                          if (index == allMessages.length) {
-                            return _LoadOlderButton(
-                              visible: uiState.hasMoreOlder,
-                              loading: uiState.loadingOlder,
-                              onPressed: () => _loadOlder(allMessages),
-                            );
-                          }
-                          return _MessageBubble(
-                            key: ValueKey(allMessages[index].id),
-                            message: allMessages[index],
+            child: Consumer(
+              builder: (context, ref, _) {
+                final messages = ref.watch(messagesProvider(widget.chatId));
+                final uiState =
+                    ref
+                        .watch(messageThreadListUiProvider(widget.chatId))
+                        .valueOrNull ??
+                    controller.listState;
+
+                return messages.when(
+                  data: (items) {
+                    _handleMessageStreamUpdate(items, controller);
+                    final allMessages = _mergeMessages(items, uiState);
+                    final timelineItems = _buildTimelineItems(allMessages);
+                    final canLoadOlder =
+                        uiState.hasMoreOlder &&
+                        (items.length >= _messagePageSize ||
+                            uiState.olderMessages.isNotEmpty);
+                    return allMessages.isEmpty
+                        ? const EmptyStateCard(
+                            icon: Icons.waving_hand_outlined,
+                            title: 'Say hello',
+                            message:
+                                'Send a message or attach an image or PDF.',
+                          )
+                        : ListView.builder(
+                            reverse: true,
+                            controller: _scrollController,
+                            physics: const BouncingScrollPhysics(
+                              parent: AlwaysScrollableScrollPhysics(),
+                            ),
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                            cacheExtent: 640,
+                            padding: const EdgeInsets.all(12),
+                            itemCount: timelineItems.length + 1,
+                            itemBuilder: (_, index) {
+                              if (index == timelineItems.length) {
+                                return _LoadOlderButton(
+                                  visible: canLoadOlder,
+                                  loading: uiState.loadingOlder,
+                                  onPressed: () => _loadOlder(allMessages),
+                                );
+                              }
+                              final item = timelineItems[index];
+                              if (item is _DateTimelineItem) {
+                                return _DateSeparator(label: item.label);
+                              }
+                              final message = (item as _MessageTimelineItem)
+                                  .message;
+                              return _MessageBubble(
+                                key: ValueKey(message.id),
+                                message: message,
+                              );
+                            },
                           );
-                        },
-                      );
+                  },
+                  loading: () => const AppLoadingView(),
+                  error: (error, _) => AppErrorView(
+                    error: error,
+                    onRetry: () =>
+                        ref.invalidate(messagesProvider(widget.chatId)),
+                  ),
+                );
               },
-              loading: () => const AppLoadingView(),
-              error: (error, _) => AppErrorView(
-                error: error,
-                onRetry: () => ref.invalidate(messagesProvider(widget.chatId)),
-              ),
             ),
           ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-              child: AppCard(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Row(
-                  children: [
-                    IconButton(
-                      tooltip: 'Attach image or PDF',
-                      onPressed: uiState.sending ? null : _pickFiles,
-                      icon: const Icon(Icons.attach_file),
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final uiState =
+                      ref
+                          .watch(messageThreadUiProvider(widget.chatId))
+                          .valueOrNull ??
+                      controller.state;
+                  return AppCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
                     ),
-                    Expanded(
-                      child: TextField(
-                        controller: _text,
-                        minLines: 1,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          hintText: 'Message',
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          filled: false,
-                          isDense: true,
+                    child: Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Attach image or PDF',
+                          onPressed: uiState.sending ? null : _pickFiles,
+                          icon: const Icon(Icons.attach_file),
                         ),
-                      ),
-                    ),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      child: uiState.sending
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            )
-                          : IconButton(
-                              tooltip: 'Send',
-                              onPressed: _sendText,
-                              icon: const Icon(Icons.send_rounded),
+                        Expanded(
+                          child: TextField(
+                            controller: _text,
+                            minLines: 1,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              hintText: 'Message',
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              filled: false,
+                              isDense: true,
                             ),
+                          ),
+                        ),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          child: uiState.sending
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                )
+                              : IconButton(
+                                  tooltip: 'Send',
+                                  onPressed: _sendText,
+                                  icon: const Icon(Icons.send_rounded),
+                                ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -176,7 +203,77 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     );
   }
 
-  void _scheduleScrollForNewMessage(List<Message> messages) {
+  List<Message> _mergeMessages(
+    List<Message> streamMessages,
+    MessageThreadListUiState uiState,
+  ) {
+    final matchedOptimisticIds = <String>{};
+    for (final local in uiState.optimisticMessages) {
+      if (streamMessages.any((remote) => _matchesOptimistic(local, remote))) {
+        matchedOptimisticIds.add(local.id);
+      }
+    }
+
+    if (matchedOptimisticIds.isNotEmpty) {
+      Future.microtask(
+        () => ref
+            .read(messageThreadControllerProvider(widget.chatId))
+            .removeOptimisticMessages(matchedOptimisticIds),
+      );
+    }
+
+    final olderIds = streamMessages.map((message) => message.id).toSet();
+    return [
+      ...uiState.optimisticMessages.where(
+        (message) => !matchedOptimisticIds.contains(message.id),
+      ),
+      ...streamMessages,
+      ...uiState.olderMessages.where((older) => olderIds.add(older.id)),
+    ];
+  }
+
+  List<_TimelineItem> _buildTimelineItems(List<Message> messages) {
+    final items = <_TimelineItem>[];
+    for (var i = 0; i < messages.length; i++) {
+      final message = messages[i];
+      items.add(_MessageTimelineItem(message));
+
+      final nextMessage = i + 1 < messages.length ? messages[i + 1] : null;
+      final shouldShowDate =
+          nextMessage == null ||
+          !_sameDay(message.createdAt, nextMessage.createdAt);
+      if (shouldShowDate) {
+        items.add(_DateTimelineItem(_dateSeparatorLabel(message.createdAt)));
+      }
+    }
+    return items;
+  }
+
+  bool _matchesOptimistic(Message local, Message remote) {
+    if (!local.id.startsWith('local-')) return false;
+    if (local.senderId != remote.senderId) return false;
+    if ((local.text ?? '').trim() != (remote.text ?? '').trim()) return false;
+    final delta = remote.createdAt.difference(local.createdAt).abs();
+    return delta < const Duration(minutes: 2);
+  }
+
+  bool _sameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _dateSeparatorLabel(DateTime value) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(value.year, value.month, value.day);
+    if (date == today) return 'Today';
+    if (date == today.subtract(const Duration(days: 1))) return 'Yesterday';
+    return DateFormat('d MMMM yyyy').format(value);
+  }
+
+  void _handleMessageStreamUpdate(
+    List<Message> messages,
+    MessageThreadController controller,
+  ) {
     if (messages.isEmpty) return;
 
     final newest = messages.first;
@@ -184,14 +281,18 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
 
     final hadMessages = _latestMessageId != null;
     _latestMessageId = newest.id;
-    if (!hadMessages) return;
+
+    if (_latestReadMessageId != newest.id) {
+      _latestReadMessageId = newest.id;
+      Future.microtask(() => controller.markRead());
+    }
 
     final currentUid = ref.read(authRepositoryProvider).firebaseUser?.uid;
     final isMine = newest.senderId == currentUid;
     final isNearLatest =
         !_scrollController.hasClients ||
         _scrollController.position.pixels < 160;
-    if (!isMine && !isNearLatest) return;
+    if (!hadMessages || (!isMine && !isNearLatest)) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToLatest());
   }
@@ -223,6 +324,10 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     final message = _text.text;
     if (message.trim().isEmpty) return;
     _text.clear();
+    Future<void>.delayed(
+      const Duration(milliseconds: 80),
+      _scrollToLatest,
+    );
     try {
       await ref
           .read(messageThreadControllerProvider(widget.chatId))
@@ -300,6 +405,51 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
 
 enum _AttachmentPickType { images, pdf }
 
+sealed class _TimelineItem {
+  const _TimelineItem();
+}
+
+class _MessageTimelineItem extends _TimelineItem {
+  final Message message;
+
+  const _MessageTimelineItem(this.message);
+}
+
+class _DateTimelineItem extends _TimelineItem {
+  final String label;
+
+  const _DateTimelineItem(this.label);
+}
+
+class _DateSeparator extends StatelessWidget {
+  final String label;
+
+  const _DateSeparator({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: .86),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ChatTitle extends ConsumerWidget {
   final Chat? chat;
 
@@ -323,7 +473,6 @@ class _ChatTitle extends ConsumerWidget {
         chat!.participantNames[peerId] ??
         chat!.participantPhones[peerId] ??
         'Unknown Contact';
-    final image = _imageProvider(chat!.participantImageUrls[peerId]);
     final status = ref.watch(userStatusProvider(peerId));
     final isTyping =
         chat!.participantIds.contains(peerId) &&
@@ -333,20 +482,17 @@ class _ChatTitle extends ConsumerWidget {
       data: (data) {
         final isOnline = data?['isOnline'] as bool? ?? false;
         final lastSeen = _readDate(data?['lastSeen']);
+        final lastActivity = lastSeen ?? _readDate(data?['updatedAt']);
+        final recentlyActive = _isRecentlyActive(isOnline, lastActivity);
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
+            AppAvatarImage(
+              imageUrl: chat!.participantImageUrls[peerId],
               radius: 18,
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              foregroundImage: image,
-              child: image == null
-                  ? Icon(
-                      Icons.person,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      size: 20,
-                    )
-                  : null,
+              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+              fallback: const Icon(Icons.person, size: 20),
             ),
             const SizedBox(width: 10),
             Flexible(
@@ -356,11 +502,11 @@ class _ChatTitle extends ConsumerWidget {
                 children: [
                   Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
                   Text(
-                    isTyping
+                    isTyping && recentlyActive
                         ? 'typing...'
-                        : isOnline
+                        : recentlyActive
                         ? 'online'
-                        : _lastSeenText(lastSeen),
+                        : _lastSeenText(lastActivity),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall,
@@ -376,21 +522,6 @@ class _ChatTitle extends ConsumerWidget {
     );
   }
 
-  ImageProvider? _imageProvider(String? value) {
-    try {
-      final image = value?.trim();
-      if (image == null || image.isEmpty) return null;
-      if (image.startsWith('data:image')) {
-        final commaIndex = image.indexOf(',');
-        if (commaIndex == -1) return null;
-        return MemoryImage(base64Decode(image.substring(commaIndex + 1)));
-      }
-      return NetworkImage(image);
-    } catch (_) {
-      return null;
-    }
-  }
-
   DateTime? _readDate(Object? value) {
     if (value == null) return null;
     if (value is DateTime) return value;
@@ -402,7 +533,23 @@ class _ChatTitle extends ConsumerWidget {
 
   String _lastSeenText(DateTime? value) {
     if (value == null) return 'offline';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(value.year, value.month, value.day);
+    if (date == today) {
+      return 'last seen today at ${DateFormat('h:mm a').format(value)}';
+    }
+    if (date == today.subtract(const Duration(days: 1))) {
+      return 'last seen yesterday at ${DateFormat('h:mm a').format(value)}';
+    }
     return 'last seen ${DateFormat('d MMM yyyy, h:mm a').format(value)}';
+  }
+
+  bool _isRecentlyActive(bool isOnline, DateTime? lastSeen) {
+    if (!isOnline) return false;
+    if (lastSeen == null) return true;
+    final inactiveFor = DateTime.now().difference(lastSeen);
+    return inactiveFor <= const Duration(minutes: 5);
   }
 }
 
@@ -431,92 +578,78 @@ class _MessageBubble extends ConsumerWidget {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.sizeOf(context).width * .78,
         ),
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) => Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(isMe ? 12 * (1 - value) : -12 * (1 - value), 0),
-              child: child,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(18),
+              topRight: const Radius.circular(18),
+              bottomLeft: Radius.circular(isMe ? 18 : 4),
+              bottomRight: Radius.circular(isMe ? 4 : 18),
             ),
+            border: Border.all(
+              color: isMe
+                  ? colorScheme.primary.withValues(alpha: .18)
+                  : colorScheme.outlineVariant.withValues(alpha: .45),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.shadow.withValues(
+                  alpha: Theme.of(context).brightness == Brightness.dark
+                      ? .16
+                      : .08,
+                ),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18),
-                topRight: const Radius.circular(18),
-                bottomLeft: Radius.circular(isMe ? 18 : 4),
-                bottomRight: Radius.circular(isMe ? 4 : 18),
-              ),
-              border: Border.all(
-                color: isMe
-                    ? colorScheme.primary.withValues(alpha: .18)
-                    : colorScheme.outlineVariant.withValues(alpha: .45),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: colorScheme.shadow.withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark
-                        ? .16
-                        : .08,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 10, 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (message.text != null)
+                  Text(
+                    message.text!,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 16,
+                      height: 1.25,
+                    ),
                   ),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
+                if (message.attachments.isNotEmpty)
+                  ...message.attachments.map(
+                    (attachment) => Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: _AttachmentPreview(attachment: attachment),
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateFormat.Hm().format(message.createdAt),
+                        style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(color: textColor.withValues(alpha: .7)),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          _stateIcon(message.state),
+                          size: 15,
+                          color: receiptColor,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 10, 6),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (message.text != null)
-                    Text(
-                      message.text!,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 16,
-                        height: 1.25,
-                      ),
-                    ),
-                  if (message.attachments.isNotEmpty)
-                    ...message.attachments.map(
-                      (attachment) => Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: _AttachmentPreview(attachment: attachment),
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          DateFormat.Hm().format(message.createdAt),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: textColor.withValues(alpha: .7),
-                              ),
-                        ),
-                        if (isMe) ...[
-                          const SizedBox(width: 4),
-                          Icon(
-                            _stateIcon(message.state),
-                            size: 15,
-                            color: receiptColor,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),

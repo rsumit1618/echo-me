@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/core/errors/app_exception.dart';
 import 'package:echo_me/core/utils/image_optimizer.dart';
+import 'package:echo_me/core/widgets/app_avatar_image.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/app_user.dart';
@@ -195,7 +196,6 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = user.profileImageUrl;
-    final imageProvider = _imageProvider(imageUrl);
     return InkWell(
       customBorder: const CircleBorder(),
       onTap: saving ? null : onTap,
@@ -220,29 +220,30 @@ class _Avatar extends StatelessWidget {
             ),
           ],
         ),
-        child: CircleAvatar(
-          radius: 56,
-          backgroundImage: imageProvider,
-          child: saving
-              ? const CircularProgressIndicator(strokeWidth: 2)
-              : imageProvider == null
-              ? const Icon(Icons.add_a_photo, size: 32)
-              : null,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AppAvatarImage(
+              imageUrl: imageUrl,
+              radius: 56,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              fallback: const Icon(Icons.add_a_photo, size: 32),
+            ),
+            if (saving)
+              Container(
+                width: 112,
+                height: 112,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: .28),
+                  shape: BoxShape.circle,
+                ),
+                child: const CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
         ),
       ),
     );
-  }
-
-  ImageProvider? _imageProvider(String? value) {
-    try {
-      if (value == null || value.isEmpty) return null;
-      if (value.startsWith('data:image')) {
-        final base64Data = value.substring(value.indexOf(',') + 1);
-        return MemoryImage(base64Decode(base64Data));
-      }
-      return NetworkImage(value);
-    } catch (_) {
-      return null;
-    }
   }
 }

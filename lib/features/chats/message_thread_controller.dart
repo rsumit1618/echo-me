@@ -20,6 +20,11 @@ final messageThreadUiProvider = StreamProvider.autoDispose
       return ref.watch(messageThreadControllerProvider(chatId)).stateStream;
     });
 
+final messageThreadListUiProvider = StreamProvider.autoDispose
+    .family<MessageThreadListUiState, String>((ref, chatId) {
+      return ref.watch(messageThreadControllerProvider(chatId)).listStateStream;
+    });
+
 class MessageThreadUiState {
   final bool sending;
   final bool loadingOlder;
@@ -52,6 +57,20 @@ class MessageThreadUiState {
   }
 }
 
+class MessageThreadListUiState {
+  final bool loadingOlder;
+  final bool hasMoreOlder;
+  final List<Message> olderMessages;
+  final List<Message> optimisticMessages;
+
+  const MessageThreadListUiState({
+    required this.loadingOlder,
+    required this.hasMoreOlder,
+    required this.olderMessages,
+    required this.optimisticMessages,
+  });
+}
+
 class MessageThreadController {
   final Ref _ref;
   final String _chatId;
@@ -59,6 +78,7 @@ class MessageThreadController {
   final BehaviorSubject<MessageThreadUiState> _stateSubject;
   final BehaviorSubject<String> _typingSubject;
   late final StreamSubscription<String> _typingSubscription;
+  Timer? _activityTimer;
   bool _disposed = false;
 
   MessageThreadController(this._ref, this._chatId)
@@ -71,11 +91,41 @@ class MessageThreadController {
         .debounceTime(const Duration(milliseconds: 350))
         .listen((text) => _setTyping(text.isNotEmpty));
     unawaited(_activateThread());
+    _activityTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => unawaited(_chatRepository.setActiveChat(_chatId)),
+    );
   }
 
   Stream<MessageThreadUiState> get stateStream => _stateSubject.stream;
 
+  Stream<MessageThreadListUiState> get listStateStream => stateStream
+      .map(
+        (state) => MessageThreadListUiState(
+          loadingOlder: state.loadingOlder,
+          hasMoreOlder: state.hasMoreOlder,
+          olderMessages: state.olderMessages,
+          optimisticMessages: state.optimisticMessages,
+        ),
+      )
+      .distinct((previous, next) {
+        return previous.loadingOlder == next.loadingOlder &&
+            previous.hasMoreOlder == next.hasMoreOlder &&
+            identical(previous.olderMessages, next.olderMessages) &&
+            identical(previous.optimisticMessages, next.optimisticMessages);
+      });
+
   MessageThreadUiState get state => _stateSubject.value;
+
+  MessageThreadListUiState get listState {
+    final value = state;
+    return MessageThreadListUiState(
+      loadingOlder: value.loadingOlder,
+      hasMoreOlder: value.hasMoreOlder,
+      olderMessages: value.olderMessages,
+      optimisticMessages: value.optimisticMessages,
+    );
+  }
 
   void textChanged(String text) {
     if (_disposed) return;
@@ -129,7 +179,7 @@ class MessageThreadController {
           .sendTextMessage(_chatId, trimmed)
           .timeout(const Duration(seconds: 30));
       await _setTyping(false);
-      _removeOptimistic(optimistic.id);
+      _replaceOptimistic(optimistic, MessageState.sent);
     } catch (error) {
       _replaceOptimistic(optimistic, MessageState.failed);
       throw AppErrorMapper.map(error);
@@ -163,6 +213,7 @@ class MessageThreadController {
 
   void dispose() {
     _disposed = true;
+    _activityTimer?.cancel();
     unawaited(_typingSubscription.cancel());
     unawaited(_chatRepository.setTyping(_chatId, false));
     unawaited(_chatRepository.setActiveChat(null));
@@ -201,11 +252,11 @@ class MessageThreadController {
     );
   }
 
-  void _removeOptimistic(String id) {
+  void removeOptimisticMessages(Set<String> ids) {
     _emit(
       state.copyWith(
         optimisticMessages: state.optimisticMessages
-            .where((message) => message.id != id)
+            .where((message) => !ids.contains(message.id))
             .toList(growable: false),
       ),
     );
