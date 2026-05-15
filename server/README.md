@@ -23,6 +23,21 @@ Use Google AI Studio to create a Gemini API key, then paste it into:
 GEMINI_API_KEY=your_key_here
 ```
 
+Firebase Admin uses your Firebase project id and service account JSON:
+
+```env
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_SERVICE_ACCOUNT_JSON=your_firebase_service_account_json
+```
+
+Get the service account file from:
+
+```text
+Firebase Console > Project Settings > Service accounts > Generate new private key
+```
+
+Paste the JSON only in `.env` or hosting provider environment variables. Never commit it.
+
 The server also limits Echo AI usage per Firebase user:
 
 ```env
@@ -57,6 +72,12 @@ Body:
 }
 ```
 
+Opening this endpoint in a browser uses `GET`, so this response is expected:
+
+```json
+{"error":"Method not allowed."}
+```
+
 ## Deploy on Vercel
 
 Push the `server` folder to GitHub first. In Vercel, import the same repo and choose:
@@ -76,7 +97,7 @@ GEMINI_API_KEY=your_google_ai_studio_key
 GEMINI_MODEL=gemini-2.5-flash-lite
 AI_DAILY_LIMIT_PER_USER=30
 AI_PER_MINUTE_LIMIT_PER_USER=3
-FIREBASE_PROJECT_ID=echo-me-fe509
+FIREBASE_PROJECT_ID=your_firebase_project_id
 FIREBASE_SERVICE_ACCOUNT_JSON=your_firebase_service_account_json
 ```
 
