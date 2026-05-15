@@ -16,8 +16,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { verifyAuthorizationHeader } = await import('../../../src/auth.js');
-    const { handleEchoAiChat } = await import('../../../src/echoAiHandler.js');
+    const { verifyAuthorizationHeader } = await import('../../src/auth.js');
+    const { handleEchoAiChat } = await import('../../src/echoAiHandler.js');
     const user = await verifyAuthorizationHeader(req.headers.authorization ?? '');
     const result = await handleEchoAiChat({ body: req.body, user });
     return sendJson(res, 200, result);
