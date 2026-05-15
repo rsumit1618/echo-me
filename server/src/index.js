@@ -42,9 +42,9 @@ app.post('/api/echo-ai/chat', requireFirebaseUser, async (req, res) => {
     console.error('echo-ai chat failed', error);
     return res.status(error.status || 500).json({
       error:
-        error.status === 429
-          ? error.message
-          : 'AI is not available right now. Please try again.',
+        error.publicMessage ||
+        error.message ||
+        'AI is not available right now. Please try again.',
     });
   }
 });

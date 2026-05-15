@@ -43,9 +43,7 @@ class EchoAiRepository {
 
     final response = await request.close().timeout(const Duration(seconds: 45));
     final body = await response.transform(utf8.decoder).join();
-    final data = body.isEmpty
-        ? const <String, dynamic>{}
-        : jsonDecode(body) as Map<String, dynamic>;
+    final data = _decodeResponse(body);
 
     if (response.statusCode == HttpStatus.unauthorized) {
       throw const AuthFailure('Please login again to continue.');
@@ -68,5 +66,18 @@ class EchoAiRepository {
 
   void close() {
     _client.close(force: true);
+  }
+
+  Map<String, dynamic> _decodeResponse(String body) {
+    if (body.isEmpty) return const <String, dynamic>{};
+
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } on FormatException {
+      throw const ServerFailure();
+    }
+
+    throw const ServerFailure();
   }
 }
