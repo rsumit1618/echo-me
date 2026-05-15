@@ -1,4 +1,5 @@
 import { admin } from './auth.js';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const minuteBuckets = new Map();
 
@@ -50,7 +51,7 @@ async function enforceDailyLimit(uid) {
         date: dateKey,
         count: count + 1,
         limit,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
     );

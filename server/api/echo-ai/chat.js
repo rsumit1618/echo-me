@@ -1,6 +1,4 @@
 import 'dotenv/config';
-import { verifyAuthorizationHeader } from '../../../src/auth.js';
-import { handleEchoAiChat } from '../../../src/echoAiHandler.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,6 +16,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    const { verifyAuthorizationHeader } = await import('../../../src/auth.js');
+    const { handleEchoAiChat } = await import('../../../src/echoAiHandler.js');
     const user = await verifyAuthorizationHeader(req.headers.authorization ?? '');
     const result = await handleEchoAiChat({ body: req.body, user });
     return sendJson(res, 200, result);
