@@ -176,7 +176,9 @@ class AuthRepositoryImpl implements AuthRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       };
       if (phone != null && phone.isNotEmpty) {
-        await phoneIndex.doc(phone).set(phoneIndexData, SetOptions(merge: true));
+        await phoneIndex
+            .doc(phone)
+            .set(phoneIndexData, SetOptions(merge: true));
         final normalizedPhone = PhoneNormalizer.normalizeToIndian10DigitOrNull(
           phone,
         );

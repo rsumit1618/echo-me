@@ -52,13 +52,17 @@ class MessageModel extends Message {
       'text': text,
       'imageUrls': imageUrls,
       'attachments': attachments
-          .map((attachment) => MessageAttachmentModel.fromEntity(attachment).toMap())
+          .map(
+            (attachment) =>
+                MessageAttachmentModel.fromEntity(attachment).toMap(),
+          )
           .toList(),
       'type': type.name,
       'state': state.name,
       'createdAt': Timestamp.fromDate(createdAt),
-      'deliveredAt':
-          deliveredAt == null ? null : Timestamp.fromDate(deliveredAt!),
+      'deliveredAt': deliveredAt == null
+          ? null
+          : Timestamp.fromDate(deliveredAt!),
       'readAt': readAt == null ? null : Timestamp.fromDate(readAt!),
     };
   }

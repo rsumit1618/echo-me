@@ -2,13 +2,18 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/errors/app_exception.dart';
 import 'package:echo_me/core/utils/image_optimizer.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
+import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/app_user.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+
+final profileSavingProvider = StateProvider.autoDispose<bool>((ref) => false);
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -19,7 +24,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _email = TextEditingController();
-  bool _saving = false;
 
   @override
   void dispose() {
@@ -30,6 +34,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authStateProvider);
+    final saving = ref.watch(profileSavingProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: auth.when(
@@ -45,7 +50,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: const EdgeInsets.all(22),
                 child: Column(
                   children: [
-                    _Avatar(user: user, onTap: _changeImage),
+                    _Avatar(user: user, saving: saving, onTap: _changeImage),
                     const SizedBox(height: 14),
                     Text(
                       user.phoneNumber,
@@ -90,9 +95,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) =>
-            Center(child: Text('Could not load profile: $error')),
+        loading: () => const AppLoadingView(),
+        error: (error, _) => AppErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(authStateProvider),
+        ),
       ),
     );
   }
@@ -140,44 +147,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       );
       if (cropped == null) return;
-      if (mounted) setState(() => _saving = true);
+      ref.read(profileSavingProvider.notifier).state = true;
 
       final uid = ref.read(authRepositoryProvider).firebaseUser?.uid;
-      if (uid == null) throw Exception('Please login again.');
+      if (uid == null) throw const AppException('Please login again.');
       final optimized = await ImageOptimizer().compressToUnder100Kb(
         File(cropped.path),
       );
       final bytes = await optimized.readAsBytes();
-      final url = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      final url = await compute(_encodeProfileImageDataUrl, bytes);
       await ref
           .read(authRepositoryProvider)
           .updateProfile(profileImageUrl: url)
           .timeout(const Duration(seconds: 20));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile image updated.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profile image updated.')));
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not update profile image. Please try again.'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(AppErrorMapper.message(error))));
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) ref.read(profileSavingProvider.notifier).state = false;
     }
   }
+}
 
+String _encodeProfileImageDataUrl(List<int> bytes) {
+  return 'data:image/jpeg;base64,${base64Encode(bytes)}';
 }
 
 class _Avatar extends StatelessWidget {
   final AppUser user;
+  final bool saving;
   final VoidCallback onTap;
 
-  const _Avatar({required this.user, required this.onTap});
+  const _Avatar({
+    required this.user,
+    required this.saving,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +198,7 @@ class _Avatar extends StatelessWidget {
     final imageProvider = _imageProvider(imageUrl);
     return InkWell(
       customBorder: const CircleBorder(),
-      onTap: onTap,
+      onTap: saving ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 240),
         padding: const EdgeInsets.all(4),
@@ -210,7 +223,9 @@ class _Avatar extends StatelessWidget {
         child: CircleAvatar(
           radius: 56,
           backgroundImage: imageProvider,
-          child: imageProvider == null
+          child: saving
+              ? const CircularProgressIndicator(strokeWidth: 2)
+              : imageProvider == null
               ? const Icon(Icons.add_a_photo, size: 32)
               : null,
         ),

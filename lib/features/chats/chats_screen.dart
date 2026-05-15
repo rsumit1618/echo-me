@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
+import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/chat.dart';
 import 'package:echo_me/domain/entity/message.dart';
 import 'package:echo_me/features/chats/message_thread_screen.dart';
@@ -110,8 +111,11 @@ class ChatsScreen extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Could not load chats: $error')),
+      loading: () => const AppLoadingView(),
+      error: (error, _) => AppErrorView(
+        error: error,
+        onRetry: () => ref.invalidate(recentChatsProvider),
+      ),
     );
   }
 
@@ -213,11 +217,10 @@ class _ChatMeta extends StatelessWidget {
                       ),
                       child: Text(
                         unreadCount > 99 ? '99+' : '$unreadCount',
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(
-                              color: colorScheme.onPrimary,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onPrimary,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   )

@@ -1,4 +1,5 @@
 import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/errors/app_exception.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/domain/repository/auth_repository.dart';
 import 'package:flutter/material.dart';
@@ -59,7 +60,10 @@ class EmailAuthController extends StateNotifier<EmailAuthState> {
       }
       state = state.copyWith(loading: false);
     } catch (error) {
-      state = state.copyWith(loading: false, error: error.toString());
+      state = state.copyWith(
+        loading: false,
+        error: AppErrorMapper.message(error),
+      );
     }
   }
 
@@ -72,7 +76,10 @@ class EmailAuthController extends StateNotifier<EmailAuthState> {
         message: 'Password reset link sent to your email.',
       );
     } catch (error) {
-      state = state.copyWith(loading: false, error: error.toString());
+      state = state.copyWith(
+        loading: false,
+        error: AppErrorMapper.message(error),
+      );
     }
   }
 }

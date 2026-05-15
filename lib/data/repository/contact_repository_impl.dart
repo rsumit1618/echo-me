@@ -7,6 +7,7 @@ import 'package:echo_me/data/source/remote/firestore_service.dart';
 import 'package:echo_me/domain/entity/contact.dart';
 import 'package:echo_me/domain/repository/auth_repository.dart';
 import 'package:echo_me/domain/repository/contact_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
 class ContactRepositoryImpl implements ContactRepository {
@@ -101,25 +102,22 @@ class ContactRepositoryImpl implements ContactRepository {
         .userContacts(user.uid)
         .orderBy('displayName')
         .snapshots()
-        .asyncMap(
-          (snapshot) async {
-            final contacts = snapshot.docs
+        .asyncMap((snapshot) async {
+          final contacts = snapshot.docs
               .map((doc) => ContactModel.fromMap(doc.id, doc.data()))
               .toList();
-            return _withProfileImages(contacts);
-          },
-        )
+          return _withProfileImages(contacts);
+        })
         .handleError((error) {
-      print('watchContacts error: $error');
-      return <AppContact>[];
-    });
+          debugPrint('watchContacts error: ${AppErrorMapper.message(error)}');
+        });
   }
 
-  Future<List<ContactModel>> _withProfileImages(List<ContactModel> contacts) async {
+  Future<List<ContactModel>> _withProfileImages(
+    List<ContactModel> contacts,
+  ) async {
     final registeredIds = contacts
-        .where(
-          (contact) => contact.registeredUserId != null,
-        )
+        .where((contact) => contact.registeredUserId != null)
         .map((contact) => contact.registeredUserId!)
         .toSet()
         .toList();

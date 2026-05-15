@@ -28,11 +28,7 @@ void main() {
     expect(AppTheme.elite().colorScheme.primary, isNotNull);
   });
 
-  for (final size in const [
-    Size(360, 780),
-    Size(430, 900),
-    Size(820, 1180),
-  ]) {
+  for (final size in const [Size(360, 780), Size(430, 900), Size(820, 1180)]) {
     testWidgets('contacts screen fits at ${size.width.toInt()}px width', (
       tester,
     ) async {
@@ -42,7 +38,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            contactRepositoryProvider.overrideWithValue(_FakeContactRepository()),
+            contactRepositoryProvider.overrideWithValue(
+              _FakeContactRepository(),
+            ),
             authRepositoryProvider.overrideWithValue(_FakeAuthRepository()),
             chatRepositoryProvider.overrideWithValue(_FakeChatRepository()),
           ],
@@ -170,15 +168,13 @@ class _FakeAuthRepository implements AuthRepository {
   Future<AppUser> verifyOtp({
     required String verificationId,
     required String smsCode,
-  }) async =>
-      _user;
+  }) async => _user;
 
   @override
   Future<AppUser> verifyOtpAndLinkPhone({
     required String verificationId,
     required String smsCode,
-  }) async =>
-      _user;
+  }) async => _user;
 }
 
 class _FakeChatRepository implements ChatRepository {
@@ -190,8 +186,7 @@ class _FakeChatRepository implements ChatRepository {
     String chatId,
     DateTime before, {
     int limit = 30,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<String> getOrCreateOneToOneChat(
@@ -199,8 +194,7 @@ class _FakeChatRepository implements ChatRepository {
     String? peerDisplayName,
     String? peerPhoneNumber,
     String? peerProfileImageUrl,
-  }) async =>
-      'chat-1';
+  }) async => 'chat-1';
 
   @override
   Future<void> markRead(String chatId) async {}

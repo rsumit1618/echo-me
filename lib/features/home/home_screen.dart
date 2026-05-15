@@ -9,17 +9,12 @@ import 'package:echo_me/features/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+final homeTabIndexProvider = StateProvider.autoDispose<int>((ref) => 0);
+
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _index = 0;
-
-  final _screens = const [
+  static const _screens = [
     ChatsScreen(),
     ContactsScreen(),
     CallHistoryScreen(),
@@ -30,6 +25,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final currentUser = ref.watch(authStateProvider).valueOrNull;
+    final index = ref.watch(homeTabIndexProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +59,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ],
                 ),
-                child: _HomeProfileImage(imageUrl: currentUser?.profileImageUrl),
+                child: _HomeProfileImage(
+                  imageUrl: currentUser?.profileImageUrl,
+                ),
               ),
             ),
           ),
@@ -71,14 +69,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: KeyedSubtree(
         key: ValueKey(themeMode),
-        child: IndexedStack(
-          index: _index,
-          children: _screens,
-        ),
+        child: IndexedStack(index: index, children: _screens),
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
+        selectedIndex: index,
+        onDestinationSelected: (value) =>
+            ref.read(homeTabIndexProvider.notifier).state = value,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),

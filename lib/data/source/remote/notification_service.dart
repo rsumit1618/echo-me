@@ -4,7 +4,7 @@ class NotificationService {
   final FirebaseMessaging messaging;
 
   NotificationService({FirebaseMessaging? messaging})
-      : messaging = messaging ?? FirebaseMessaging.instance;
+    : messaging = messaging ?? FirebaseMessaging.instance;
 
   Future<String?> prepareDeviceToken() async {
     await messaging.requestPermission(alert: true, badge: true, sound: true);

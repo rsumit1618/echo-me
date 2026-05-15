@@ -1,4 +1,5 @@
 import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/errors/app_exception.dart';
 import 'package:echo_me/core/theme/app_theme.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:flutter/material.dart';
@@ -101,12 +102,9 @@ class SettingsScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Clear local data on this device',
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onErrorContainer,
-                            ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
                       ),
                     ],
                   ),
@@ -235,11 +233,12 @@ class SettingsScreen extends ConsumerWidget {
           .read(authRepositoryProvider)
           .signOut()
           .timeout(const Duration(seconds: 20));
+      invalidateUserScopedProviders(ref);
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Logout failed: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(AppErrorMapper.message(error))));
       }
     }
   }
@@ -339,9 +338,7 @@ class _ThemeSwatch extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
     );
   }

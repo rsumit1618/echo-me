@@ -20,9 +20,11 @@ class CallRepositoryImpl implements CallRepository {
         .orderBy('startedAt', descending: true)
         .limit(50)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CallModel.fromMap(doc.id, doc.data()))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => CallModel.fromMap(doc.id, doc.data()))
+              .toList(),
+        );
   }
 
   @override

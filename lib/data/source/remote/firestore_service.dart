@@ -4,7 +4,8 @@ import 'package:echo_me/core/constants/firebase_paths.dart';
 class FirestoreService {
   final FirebaseFirestore db;
 
-  FirestoreService({FirebaseFirestore? db}) : db = db ?? FirebaseFirestore.instance;
+  FirestoreService({FirebaseFirestore? db})
+    : db = db ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get users =>
       db.collection(FirebasePaths.users);
@@ -27,8 +28,7 @@ class FirestoreService {
   CollectionReference<Map<String, dynamic>> messageChunks(
     String chatId,
     String messageId,
-  ) =>
-      chatMessages(chatId).doc(messageId).collection(FirebasePaths.chunks);
+  ) => chatMessages(chatId).doc(messageId).collection(FirebasePaths.chunks);
 
   CollectionReference<Map<String, dynamic>> userCalls(String uid) =>
       users.doc(uid).collection(FirebasePaths.calls);

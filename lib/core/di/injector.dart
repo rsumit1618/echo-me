@@ -1,4 +1,5 @@
 import 'package:echo_me/core/utils/image_optimizer.dart';
+import 'package:echo_me/core/network/connectivity_service.dart';
 import 'package:echo_me/data/repository/auth_repository_impl.dart';
 import 'package:echo_me/data/repository/call_repository_impl.dart';
 import 'package:echo_me/data/repository/chat_repository_impl.dart';
@@ -23,6 +24,7 @@ void setupDependencies() {
   getIt.registerLazySingleton<FirestoreService>(() => FirestoreService());
   getIt.registerLazySingleton<StorageService>(() => StorageService());
   getIt.registerLazySingleton<NotificationService>(() => NotificationService());
+  getIt.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
   getIt.registerLazySingleton<FQLiteService>(() => FQLiteService());
   getIt.registerLazySingleton<ImageOptimizer>(() => ImageOptimizer());
 
@@ -50,7 +52,10 @@ void setupDependencies() {
     ),
   );
   getIt.registerLazySingleton<CallRepository>(
-    () => CallRepositoryImpl(getIt<AuthRepository>(), getIt<FirestoreService>()),
+    () =>
+        CallRepositoryImpl(getIt<AuthRepository>(), getIt<FirestoreService>()),
   );
-  getIt.registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl());
+  getIt.registerLazySingleton<SettingsRepository>(
+    () => SettingsRepositoryImpl(),
+  );
 }

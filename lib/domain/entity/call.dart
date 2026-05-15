@@ -1,4 +1,5 @@
 enum CallDirection { incoming, outgoing, missed }
+
 enum CallType { voice, video }
 
 class CallLogEntry {

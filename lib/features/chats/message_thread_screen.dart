@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/errors/app_exception.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
+import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/chat.dart';
 import 'package:echo_me/domain/entity/message.dart';
-import 'package:echo_me/domain/repository/chat_repository.dart';
+import 'package:echo_me/features/chats/message_thread_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,30 +32,16 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   final _text = TextEditingController();
   final _picker = ImagePicker();
   final _scrollController = ScrollController();
-  late final ChatRepository _chatRepository;
-  Timer? _typingTimer;
-  bool _sending = false;
-  bool _loadingOlder = false;
-  bool _hasMoreOlder = true;
   String? _latestMessageId;
-  final List<Message> _olderMessages = [];
 
   @override
   void initState() {
     super.initState();
-    _chatRepository = ref.read(chatRepositoryProvider);
     _text.addListener(_onTextChanged);
-    Future.microtask(() async {
-      await _chatRepository.setActiveChat(widget.chatId);
-      await _chatRepository.markRead(widget.chatId);
-    });
   }
 
   @override
   void dispose() {
-    _typingTimer?.cancel();
-    _chatRepository.setTyping(widget.chatId, false);
-    _chatRepository.setActiveChat(null);
     _scrollController.dispose();
     _text.dispose();
     super.dispose();
@@ -61,6 +49,12 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final controller = ref.watch(
+      messageThreadControllerProvider(widget.chatId),
+    );
+    final uiState =
+        ref.watch(messageThreadUiProvider(widget.chatId)).valueOrNull ??
+        controller.state;
     final chat = ref.watch(chatProvider(widget.chatId));
     final messages = ref.watch(messagesProvider(widget.chatId));
 
@@ -77,13 +71,13 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
           Expanded(
             child: messages.when(
               data: (items) {
-                Future.microtask(
-                  () =>
-                      ref.read(chatRepositoryProvider).markRead(widget.chatId),
-                );
+                Future.microtask(() => controller.markRead());
                 final allMessages = [
+                  ...uiState.optimisticMessages.where(
+                    (local) => !items.any((item) => item.text == local.text),
+                  ),
                   ...items,
-                  ..._olderMessages.where(
+                  ...uiState.olderMessages.where(
                     (older) => !items.any((item) => item.id == older.id),
                   ),
                 ];
@@ -108,8 +102,8 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                         itemBuilder: (_, index) {
                           if (index == allMessages.length) {
                             return _LoadOlderButton(
-                              visible: _hasMoreOlder,
-                              loading: _loadingOlder,
+                              visible: uiState.hasMoreOlder,
+                              loading: uiState.loadingOlder,
                               onPressed: () => _loadOlder(allMessages),
                             );
                           }
@@ -120,9 +114,11 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                         },
                       );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) =>
-                  Center(child: Text('Could not load messages: $error')),
+              loading: () => const AppLoadingView(),
+              error: (error, _) => AppErrorView(
+                error: error,
+                onRetry: () => ref.invalidate(messagesProvider(widget.chatId)),
+              ),
             ),
           ),
           SafeArea(
@@ -134,7 +130,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                   children: [
                     IconButton(
                       tooltip: 'Attach image or PDF',
-                      onPressed: _sending ? null : _pickFiles,
+                      onPressed: uiState.sending ? null : _pickFiles,
                       icon: const Icon(Icons.attach_file),
                     ),
                     Expanded(
@@ -154,7 +150,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                     ),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 180),
-                      child: _sending
+                      child: uiState.sending
                           ? const Padding(
                               padding: EdgeInsets.all(12),
                               child: SizedBox.square(
@@ -210,58 +206,37 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   }
 
   Future<void> _loadOlder(List<Message> currentMessages) async {
-    if (_loadingOlder || currentMessages.isEmpty) return;
-    setState(() => _loadingOlder = true);
     try {
-      final oldest = currentMessages.last.createdAt;
-      final older = await ref
-          .read(chatRepositoryProvider)
-          .fetchMessagesBefore(widget.chatId, oldest)
-          .timeout(const Duration(seconds: 30));
-      if (!mounted) return;
-      setState(() {
-        _olderMessages.addAll(
-          older.where(
-            (message) => !_olderMessages.any((item) => item.id == message.id),
-          ),
-        );
-        _hasMoreOlder = older.isNotEmpty;
-      });
+      await ref
+          .read(messageThreadControllerProvider(widget.chatId))
+          .loadOlder(currentMessages);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not load older messages: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(AppErrorMapper.message(error))));
       }
-    } finally {
-      if (mounted) setState(() => _loadingOlder = false);
     }
   }
 
   Future<void> _sendText() async {
-    setState(() => _sending = true);
+    final message = _text.text;
+    if (message.trim().isEmpty) return;
+    _text.clear();
     try {
       await ref
-          .read(chatRepositoryProvider)
-          .sendTextMessage(widget.chatId, _text.text)
-          .timeout(const Duration(seconds: 30));
-      _text.clear();
-      await ref.read(chatRepositoryProvider).setTyping(widget.chatId, false);
+          .read(messageThreadControllerProvider(widget.chatId))
+          .sendText(message);
     } catch (error) {
+      _text.text = message;
       _showError(error);
-    } finally {
-      if (mounted) setState(() => _sending = false);
     }
   }
 
   void _onTextChanged() {
-    final isTyping = _text.text.trim().isNotEmpty;
-    ref.read(chatRepositoryProvider).setTyping(widget.chatId, isTyping);
-    _typingTimer?.cancel();
-    if (!isTyping) return;
-    _typingTimer = Timer(const Duration(seconds: 3), () {
-      ref.read(chatRepositoryProvider).setTyping(widget.chatId, false);
-    });
+    ref
+        .read(messageThreadControllerProvider(widget.chatId))
+        .textChanged(_text.text);
   }
 
   Future<void> _pickFiles() async {
@@ -296,16 +271,12 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     };
     if (files.isEmpty) return;
 
-    setState(() => _sending = true);
     try {
       await ref
-          .read(chatRepositoryProvider)
-          .sendFilesMessage(widget.chatId, files)
-          .timeout(const Duration(seconds: 45));
+          .read(messageThreadControllerProvider(widget.chatId))
+          .sendFiles(files);
     } catch (error) {
       _showError(error);
-    } finally {
-      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -323,7 +294,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   void _showError(Object error) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(error.toString())));
+    ).showSnackBar(SnackBar(content: Text(AppErrorMapper.message(error))));
   }
 }
 
@@ -341,9 +312,8 @@ class _ChatTitle extends ConsumerWidget {
         ref.watch(authRepositoryProvider).firebaseUser?.uid;
     final peerId = chat?.participantIds.firstWhere(
       (id) => id != currentUid,
-      orElse: () => chat!.participantIds.length > 1
-          ? chat!.participantIds.last
-          : '',
+      orElse: () =>
+          chat!.participantIds.length > 1 ? chat!.participantIds.last : '',
     );
     if (chat == null || peerId == null || peerId.isEmpty) {
       return const Text('Chat');
@@ -623,7 +593,7 @@ class _AttachmentPreview extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.memory(
-                bytes,
+                bytesUint8,
                 width: 220,
                 height: 220,
                 fit: BoxFit.cover,
@@ -784,7 +754,9 @@ class _PdfAttachmentPreview extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Could not open PDF: $error')));
+        ).showSnackBar(
+          SnackBar(content: Text(AppErrorMapper.message(error))),
+        );
       }
     }
   }

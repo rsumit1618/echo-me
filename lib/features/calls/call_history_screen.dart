@@ -1,5 +1,6 @@
 import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
+import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/call.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,8 +79,11 @@ class CallHistoryScreen extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Could not load calls: $error')),
+      loading: () => const AppLoadingView(),
+      error: (error, _) => AppErrorView(
+        error: error,
+        onRetry: () => ref.invalidate(callHistoryProvider),
+      ),
     );
   }
 

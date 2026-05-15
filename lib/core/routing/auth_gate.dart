@@ -1,4 +1,5 @@
 import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/features/auth/email_login_screen.dart';
 import 'package:echo_me/features/auth/otp_login_screen.dart';
 import 'package:echo_me/features/home/home_screen.dart';
@@ -33,41 +34,31 @@ class AuthGate extends ConsumerWidget {
             if (appUser == null) return const MobileVerificationScreen();
             return HomeScreen(key: ValueKey(appUser.uid));
           },
-          loading: () =>
-              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          loading: () => const Scaffold(body: AppLoadingView()),
           error: (error, stackTrace) {
             _logError(error, stackTrace);
             return const MobileVerificationScreen();
           },
         );
       },
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const Scaffold(body: AppLoadingView()),
       error: (error, stackTrace) {
         _logError(error, stackTrace);
-        return _AuthError(message: error.toString());
+        return _AuthError(error: error);
       },
     );
   }
 }
 
 class _AuthError extends StatelessWidget {
-  final String message;
+  final Object error;
 
-  const _AuthError({required this.message});
+  const _AuthError({required this.error});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'Could not start session: $message',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
+      body: AppErrorView(error: error),
     );
   }
 }

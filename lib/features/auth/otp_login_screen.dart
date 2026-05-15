@@ -1,4 +1,5 @@
 import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/errors/app_exception.dart';
 import 'package:echo_me/core/utils/phone_normalizer.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/domain/repository/auth_repository.dart';
@@ -35,7 +36,7 @@ class OtpController extends StateNotifier<OtpState> {
     state = state.copyWith(loading: true, error: null);
     try {
       if (!RegExp(r'^\d{10}$').hasMatch(phone)) {
-        throw Exception('Enter a valid 10 digit mobile number.');
+        throw const AppException('Enter a valid 10 digit mobile number.');
       }
       await _authRepository.sendOtp(
         phoneNumber: PhoneNormalizer.normalize(phone),
@@ -47,7 +48,7 @@ class OtpController extends StateNotifier<OtpState> {
         },
       );
     } catch (error) {
-      state = OtpState(error: error.toString());
+      state = OtpState(error: AppErrorMapper.message(error));
     }
   }
 
@@ -62,7 +63,10 @@ class OtpController extends StateNotifier<OtpState> {
       );
       state = const OtpState();
     } catch (error) {
-      state = state.copyWith(loading: false, error: error.toString());
+      state = state.copyWith(
+        loading: false,
+        error: AppErrorMapper.message(error),
+      );
     }
   }
 }

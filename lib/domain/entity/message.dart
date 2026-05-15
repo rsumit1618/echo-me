@@ -1,4 +1,5 @@
 enum MessageType { text, image, pdf }
+
 enum MessageState { sending, sent, delivered, read, failed }
 
 class MessageAttachment {

@@ -1,11 +1,19 @@
 import 'dart:convert';
 
 import 'package:echo_me/core/di/providers.dart';
+import 'package:echo_me/core/errors/app_exception.dart';
 import 'package:echo_me/core/widgets/app_card.dart';
+import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/domain/entity/contact.dart';
 import 'package:echo_me/features/chats/message_thread_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final contactsSearchQueryProvider = StateProvider.autoDispose<String>(
+  (ref) => '',
+);
+
+final contactsSyncingProvider = StateProvider.autoDispose<bool>((ref) => false);
 
 class ContactsScreen extends ConsumerStatefulWidget {
   const ContactsScreen({super.key});
@@ -17,8 +25,6 @@ class ContactsScreen extends ConsumerStatefulWidget {
 class _ContactsScreenState extends ConsumerState<ContactsScreen>
     with AutomaticKeepAliveClientMixin {
   final TextEditingController _searchController = TextEditingController();
-  bool _syncing = false;
-  String _searchQuery = '';
 
   @override
   bool get wantKeepAlive => true;
@@ -27,7 +33,9 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      setState(() => _searchQuery = _searchController.text.trim());
+      ref.read(contactsSearchQueryProvider.notifier).state = _searchController
+          .text
+          .trim();
     });
   }
 
@@ -41,6 +49,8 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final contacts = ref.watch(contactsProvider);
+    final syncing = ref.watch(contactsSyncingProvider);
+    final searchQuery = ref.watch(contactsSearchQueryProvider);
 
     return Scaffold(
       body: contacts.when(
@@ -52,14 +62,14 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
               message:
                   'We normalize and deduplicate contacts before checking who is already on Echo Me.',
               action: FilledButton.icon(
-                onPressed: _syncing ? null : _sync,
+                onPressed: syncing ? null : _sync,
                 icon: const Icon(Icons.sync),
-                label: Text(_syncing ? 'Syncing...' : 'Sync contacts'),
+                label: Text(syncing ? 'Syncing...' : 'Sync contacts'),
               ),
             );
           }
 
-          final visibleContacts = _filterAndSortContacts(items);
+          final visibleContacts = _filterAndSortContacts(items, searchQuery);
 
           return Column(
             children: [
@@ -74,7 +84,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
                         decoration: InputDecoration(
                           hintText: 'Search name or number',
                           prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchQuery.isEmpty
+                          suffixIcon: searchQuery.isEmpty
                               ? null
                               : IconButton(
                                   onPressed: _searchController.clear,
@@ -89,8 +99,8 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
                     ),
                     const SizedBox(width: 10),
                     IconButton.filledTonal(
-                      onPressed: _syncing ? null : _sync,
-                      icon: _syncing
+                      onPressed: syncing ? null : _sync,
+                      icon: syncing
                           ? const SizedBox.square(
                               dimension: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
@@ -127,15 +137,20 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) =>
-            Center(child: Text('Could not load contacts: $error')),
+        loading: () => const AppLoadingView(),
+        error: (error, _) => AppErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(contactsProvider),
+        ),
       ),
     );
   }
 
-  List<AppContact> _filterAndSortContacts(List<AppContact> contacts) {
-    final query = _searchQuery.toLowerCase();
+  List<AppContact> _filterAndSortContacts(
+    List<AppContact> contacts,
+    String searchQuery,
+  ) {
+    final query = searchQuery.toLowerCase();
     final filtered = contacts.where((contact) {
       if (query.isEmpty) return true;
       return contact.displayName.toLowerCase().contains(query) ||
@@ -143,9 +158,9 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
     }).toList();
 
     filtered.sort((a, b) {
-      final priority = _contactSortPriority(a).compareTo(
-        _contactSortPriority(b),
-      );
+      final priority = _contactSortPriority(
+        a,
+      ).compareTo(_contactSortPriority(b));
       if (priority != 0) return priority;
 
       if (a.registeredUserId != null && b.registeredUserId != null) {
@@ -176,7 +191,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
   }
 
   Future<void> _sync() async {
-    setState(() => _syncing = true);
+    ref.read(contactsSyncingProvider.notifier).state = true;
     try {
       await ref
           .read(contactRepositoryProvider)
@@ -186,10 +201,12 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen>
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
+        ).showSnackBar(SnackBar(content: Text(AppErrorMapper.message(error))));
       }
     } finally {
-      if (mounted) setState(() => _syncing = false);
+      if (mounted) {
+        ref.read(contactsSyncingProvider.notifier).state = false;
+      }
     }
   }
 }
@@ -327,9 +344,9 @@ class _ContactTile extends ConsumerWidget {
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open chat: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(AppErrorMapper.message(error))));
       }
     }
   }
@@ -421,15 +438,11 @@ class _ContactActionStyle {
         buttonForeground: colorScheme.onPrimaryContainer,
       ),
       ContactAction.invite => _ContactActionStyle(
-        avatarColor: isDark
-            ? const Color(0xFF5C3F15)
-            : const Color(0xFFFFE1B8),
+        avatarColor: isDark ? const Color(0xFF5C3F15) : const Color(0xFFFFE1B8),
         avatarForeground: isDark
             ? const Color(0xFFFFD9A3)
             : const Color(0xFF4A2A00),
-        buttonColor: isDark
-            ? const Color(0xFF6B4314)
-            : const Color(0xFFFFD29A),
+        buttonColor: isDark ? const Color(0xFF6B4314) : const Color(0xFFFFD29A),
         buttonForeground: isDark
             ? const Color(0xFFFFE6C7)
             : const Color(0xFF3D2500),

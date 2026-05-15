@@ -2,6 +2,7 @@ import 'package:echo_me/core/di/injector.dart';
 import 'package:echo_me/core/di/providers.dart';
 import 'package:echo_me/core/routing/auth_gate.dart';
 import 'package:echo_me/core/theme/app_theme.dart';
+import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:echo_me/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,7 @@ class EchoMeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
+    final isOnline = ref.watch(internetConnectionProvider).valueOrNull ?? true;
     final theme = AppTheme.fromMode(mode);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -39,6 +41,14 @@ class EchoMeApp extends ConsumerWidget {
       darkTheme: theme,
       themeMode: ThemeMode.light,
       home: const AuthGate(),
+      builder: (context, child) {
+        return Column(
+          children: [
+            if (!isOnline) const OfflineBanner(),
+            Expanded(child: child ?? const SizedBox.shrink()),
+          ],
+        );
+      },
     );
   }
 }

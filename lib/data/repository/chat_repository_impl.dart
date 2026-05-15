@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:echo_me/core/errors/app_exception.dart';
@@ -12,12 +13,14 @@ import 'package:echo_me/domain/entity/chat.dart';
 import 'package:echo_me/domain/entity/message.dart';
 import 'package:echo_me/domain/repository/auth_repository.dart';
 import 'package:echo_me/domain/repository/chat_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
+const int _attachmentBase64ChunkSize = 700 * 1024;
+
 class ChatRepositoryImpl implements ChatRepository {
   static const int _maxAttachmentBytes = 10 * 1024 * 1024;
-  static const int _base64ChunkSize = 700 * 1024;
 
   final AuthRepository _auth;
   final FirestoreService _firestore;
@@ -25,12 +28,7 @@ class ChatRepositoryImpl implements ChatRepository {
   final ImageOptimizer _optimizer;
   final Uuid _uuid = const Uuid();
 
-  ChatRepositoryImpl(
-    this._auth,
-    this._firestore,
-    this._local,
-    this._optimizer,
-  );
+  ChatRepositoryImpl(this._auth, this._firestore, this._local, this._optimizer);
 
   @override
   Stream<List<Chat>> watchRecentChats() {
@@ -43,19 +41,17 @@ class ChatRepositoryImpl implements ChatRepository {
         .limit(50)
         .snapshots()
         .asyncMap((snapshot) async {
-          final chats = snapshot.docs.map((doc) {
-            final data = doc.data();
-            return ChatModel.fromMap(doc.id, data);
-          }).where((chat) => chat.lastMessage != null).toList();
+          final chats = snapshot.docs
+              .map((doc) {
+                final data = doc.data();
+                return ChatModel.fromMap(doc.id, data);
+              })
+              .where((chat) => chat.lastMessage != null)
+              .toList();
           return _withParticipantImages(chats);
         })
         .handleError((error, stack) {
-          if (error.toString().contains('failed-precondition')) {
-            print('Firestore index is still building. Please wait...');
-          } else {
-            print('watchRecentChats error: $error');
-          }
-          return <Chat>[];
+          debugPrint('watchRecentChats error: ${AppErrorMapper.message(error)}');
         });
   }
 
@@ -290,7 +286,8 @@ class ChatRepositoryImpl implements ChatRepository {
     }
 
     final unreadUpdates = {
-      for (final recipient in recipients) 'unreadCounts.$recipient': FieldValue.increment(1),
+      for (final recipient in recipients)
+        'unreadCounts.$recipient': FieldValue.increment(1),
       'unreadCounts.$uid': 0,
     };
     batch.set(_firestore.chats.doc(chatId), {
@@ -352,7 +349,9 @@ class ChatRepositoryImpl implements ChatRepository {
           'createdAt': FieldValue.serverTimestamp(),
         });
       } catch (error) {
-        print('notification request failed: $error');
+        debugPrint(
+          'notification request failed: ${AppErrorMapper.message(error)}',
+        );
       }
     }
   }
@@ -417,11 +416,19 @@ class ChatRepositoryImpl implements ChatRepository {
     }
     final originalSize = await file.length();
     if (originalSize > _maxAttachmentBytes) {
-      throw const AppException('Only image and PDF files under 10 MB are allowed.');
+      throw const AppException(
+        'Only image and PDF files under 10 MB are allowed.',
+      );
     }
 
     final extension = p.extension(file.path).toLowerCase();
-    final isImage = ['.jpg', '.jpeg', '.png', '.webp', '.heic'].contains(extension);
+    final isImage = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.webp',
+      '.heic',
+    ].contains(extension);
     final isPdf = extension == '.pdf';
     if (!isImage && !isPdf) {
       throw const AppException('Only image and PDF files are allowed.');
@@ -438,27 +445,15 @@ class ChatRepositoryImpl implements ChatRepository {
       bytes = await optimized.readAsBytes();
       compressed = true;
     } else {
-      final originalBytes = await file.readAsBytes();
-      final gzipped = gzip.encode(originalBytes);
-      if (gzipped.length < originalBytes.length) {
-        bytes = gzipped;
-        compressed = true;
-      } else {
-        bytes = originalBytes;
-      }
+      final prepared = await compute(
+        _preparePdfBytes,
+        await file.readAsBytes(),
+      );
+      bytes = prepared.bytes;
+      compressed = prepared.compressed;
     }
 
-    final base64Data = base64Encode(bytes);
-    final chunks = <String>[];
-    for (var start = 0; start < base64Data.length; start += _base64ChunkSize) {
-      final end = start + _base64ChunkSize;
-      chunks.add(
-        base64Data.substring(
-          start,
-          end > base64Data.length ? base64Data.length : end,
-        ),
-      );
-    }
+    final chunks = await compute(_base64Chunks, bytes);
 
     return _PreparedAttachment(
       metadata: MessageAttachmentModel(
@@ -536,12 +531,43 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 }
 
+_AttachmentBytes _preparePdfBytes(Uint8List originalBytes) {
+  final gzipped = gzip.encode(originalBytes);
+  if (gzipped.length < originalBytes.length) {
+    return _AttachmentBytes(Uint8List.fromList(gzipped), compressed: true);
+  }
+  return _AttachmentBytes(originalBytes, compressed: false);
+}
+
+List<String> _base64Chunks(List<int> bytes) {
+  final base64Data = base64Encode(bytes);
+  final chunks = <String>[];
+  for (
+    var start = 0;
+    start < base64Data.length;
+    start += _attachmentBase64ChunkSize
+  ) {
+    final end = start + _attachmentBase64ChunkSize;
+    chunks.add(
+      base64Data.substring(
+        start,
+        end > base64Data.length ? base64Data.length : end,
+      ),
+    );
+  }
+  return chunks;
+}
+
+class _AttachmentBytes {
+  final Uint8List bytes;
+  final bool compressed;
+
+  const _AttachmentBytes(this.bytes, {required this.compressed});
+}
+
 class _PreparedAttachment {
   final MessageAttachment metadata;
   final List<String> chunks;
 
-  const _PreparedAttachment({
-    required this.metadata,
-    required this.chunks,
-  });
+  const _PreparedAttachment({required this.metadata, required this.chunks});
 }

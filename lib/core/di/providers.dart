@@ -1,4 +1,5 @@
 import 'package:echo_me/core/di/injector.dart';
+import 'package:echo_me/core/network/connectivity_service.dart';
 import 'package:echo_me/core/theme/app_theme.dart';
 import 'package:echo_me/domain/entity/app_user.dart';
 import 'package:echo_me/domain/entity/call.dart';
@@ -13,124 +14,124 @@ import 'package:echo_me/domain/repository/settings_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
-      (_) => getIt<AuthRepository>(),
+  (_) => getIt<AuthRepository>(),
 );
 
 final contactRepositoryProvider = Provider<ContactRepository>(
-      (_) => getIt<ContactRepository>(),
+  (_) => getIt<ContactRepository>(),
 );
 
 final chatRepositoryProvider = Provider<ChatRepository>(
-      (_) => getIt<ChatRepository>(),
+  (_) => getIt<ChatRepository>(),
 );
 
 final callRepositoryProvider = Provider<CallRepository>(
-      (_) => getIt<CallRepository>(),
+  (_) => getIt<CallRepository>(),
 );
 
 final settingsRepositoryProvider = Provider<SettingsRepository>(
-      (_) => getIt<SettingsRepository>(),
+  (_) => getIt<SettingsRepository>(),
+);
+
+final connectivityServiceProvider = Provider<ConnectivityService>(
+  (_) => getIt<ConnectivityService>(),
+);
+
+final internetConnectionProvider = StreamProvider.autoDispose<bool>(
+  (ref) => ref.watch(connectivityServiceProvider).isOnlineStream,
 );
 
 /// AUTH STATE
 final authStateProvider = StreamProvider.autoDispose<AppUser?>(
-      (ref) => ref.watch(authRepositoryProvider).authStateChanges(),
+  (ref) => ref.watch(authRepositoryProvider).authStateChanges(),
 );
 
 /// FIREBASE USER
 final firebaseUserProvider = StreamProvider.autoDispose(
-      (ref) => ref.watch(authRepositoryProvider).firebaseAuthStateChanges(),
+  (ref) => ref.watch(authRepositoryProvider).firebaseAuthStateChanges(),
 );
 
 /// CURRENT USER ID
 final currentUserIdProvider = StreamProvider.autoDispose<String?>(
-      (ref) => ref
+  (ref) => ref
       .watch(authRepositoryProvider)
       .firebaseAuthStateChanges()
       .map((user) => user?.uid),
 );
 
 /// CONTACTS
-final contactsProvider = StreamProvider.autoDispose<List<AppContact>>(
-      (ref) {
-    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+final contactsProvider = StreamProvider.autoDispose<List<AppContact>>((ref) {
+  final uid = ref.watch(currentUserIdProvider).valueOrNull;
 
-    if (uid == null) {
-      return Stream.value(const <AppContact>[]);
-    }
+  if (uid == null) {
+    return Stream.value(const <AppContact>[]);
+  }
 
-    return ref.watch(contactRepositoryProvider).watchContacts();
-  },
-);
+  return ref.watch(contactRepositoryProvider).watchContacts();
+});
 
 /// RECENT CHATS
-final recentChatsProvider = StreamProvider.autoDispose<List<Chat>>(
-      (ref) {
-    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+final recentChatsProvider = StreamProvider.autoDispose<List<Chat>>((ref) {
+  final uid = ref.watch(currentUserIdProvider).valueOrNull;
 
-    if (uid == null) {
-      return Stream.value(const <Chat>[]);
-    }
+  if (uid == null) {
+    return Stream.value(const <Chat>[]);
+  }
 
-    return ref.watch(chatRepositoryProvider).watchRecentChats();
-  },
-);
+  return ref.watch(chatRepositoryProvider).watchRecentChats();
+});
 
 /// SINGLE CHAT
-final chatProvider = StreamProvider.autoDispose.family<Chat?, String>(
-      (ref, chatId) {
-    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+final chatProvider = StreamProvider.autoDispose.family<Chat?, String>((
+  ref,
+  chatId,
+) {
+  final uid = ref.watch(currentUserIdProvider).valueOrNull;
 
-    if (uid == null) {
-      return Stream.value(null);
-    }
+  if (uid == null) {
+    return Stream.value(null);
+  }
 
-    return ref.watch(chatRepositoryProvider).watchChat(chatId);
-  },
-);
+  return ref.watch(chatRepositoryProvider).watchChat(chatId);
+});
 
 /// MESSAGES
-final messagesProvider =
-StreamProvider.autoDispose.family<List<Message>, String>(
-      (ref, chatId) {
-    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+final messagesProvider = StreamProvider.autoDispose
+    .family<List<Message>, String>((ref, chatId) {
+      final uid = ref.watch(currentUserIdProvider).valueOrNull;
 
-    if (uid == null) {
-      return Stream.value(const <Message>[]);
-    }
+      if (uid == null) {
+        return Stream.value(const <Message>[]);
+      }
 
-    return ref.watch(chatRepositoryProvider).watchMessages(chatId);
-  },
-);
+      return ref.watch(chatRepositoryProvider).watchMessages(chatId);
+    });
 
 /// USER STATUS
-final userStatusProvider =
-StreamProvider.autoDispose.family<Map<String, dynamic>?, String>(
+final userStatusProvider = StreamProvider.autoDispose
+    .family<Map<String, dynamic>?, String>(
       (ref, userId) =>
-      ref.watch(chatRepositoryProvider).watchUserStatus(userId),
-);
+          ref.watch(chatRepositoryProvider).watchUserStatus(userId),
+    );
 
 /// CALL HISTORY
-final callHistoryProvider =
-StreamProvider.autoDispose<List<CallLogEntry>>(
-      (ref) {
-    final uid = ref.watch(currentUserIdProvider).valueOrNull;
+final callHistoryProvider = StreamProvider.autoDispose<List<CallLogEntry>>((
+  ref,
+) {
+  final uid = ref.watch(currentUserIdProvider).valueOrNull;
 
-    if (uid == null) {
-      return Stream.value(const <CallLogEntry>[]);
-    }
+  if (uid == null) {
+    return Stream.value(const <CallLogEntry>[]);
+  }
 
-    return ref.watch(callRepositoryProvider).watchCallHistory();
-  },
-);
+  return ref.watch(callRepositoryProvider).watchCallHistory();
+});
 
 /// THEME (KEEP PERSISTENT)
 final themeModeProvider =
-StateNotifierProvider<ThemeModeController, AppThemeMode>(
-      (ref) => ThemeModeController(
-    ref.watch(settingsRepositoryProvider),
-  ),
-);
+    StateNotifierProvider<ThemeModeController, AppThemeMode>(
+      (ref) => ThemeModeController(ref.watch(settingsRepositoryProvider)),
+    );
 
 class ThemeModeController extends StateNotifier<AppThemeMode> {
   final SettingsRepository _settings;
@@ -147,4 +148,16 @@ class ThemeModeController extends StateNotifier<AppThemeMode> {
   Future<void> _load() async {
     state = await _settings.loadTheme();
   }
+}
+
+void invalidateUserScopedProviders(WidgetRef ref) {
+  ref.invalidate(authStateProvider);
+  ref.invalidate(firebaseUserProvider);
+  ref.invalidate(currentUserIdProvider);
+  ref.invalidate(contactsProvider);
+  ref.invalidate(recentChatsProvider);
+  ref.invalidate(chatProvider);
+  ref.invalidate(messagesProvider);
+  ref.invalidate(userStatusProvider);
+  ref.invalidate(callHistoryProvider);
 }
