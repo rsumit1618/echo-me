@@ -282,8 +282,8 @@ class _TypingBubble extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: const BorderRadius.only(
@@ -292,7 +292,9 @@ class _TypingBubble extends StatelessWidget {
             bottomRight: Radius.circular(18),
             bottomLeft: Radius.circular(4),
           ),
-          border: Border.all(color: colorScheme.outlineVariant),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: .7),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -309,7 +311,7 @@ class _TypingBubble extends StatelessWidget {
               '${advisor.name} is thinking...',
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -343,7 +345,7 @@ class _EchoAiBubble extends StatelessWidget {
           maxWidth: MediaQuery.sizeOf(context).width * .82,
         ),
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 5),
+          margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
           decoration: BoxDecoration(
             color: bubbleColor,
@@ -358,13 +360,7 @@ class _EchoAiBubble extends StatelessWidget {
                   ? colorScheme.primary.withValues(alpha: .28)
                   : advisor.colors.first.withValues(alpha: .24),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.shadow.withValues(alpha: .08),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,11 +385,14 @@ class _EchoAiBubble extends StatelessWidget {
                     ],
                   ),
                 ),
-              _ReadableAiText(
-                text: message.text,
-                color: textColor,
-                accentColor: advisor.colors.first,
-                compact: isUser,
+              Text(
+                _cleanAiText(message.text),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  height: 1.36,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 5),
               Align(
@@ -416,202 +415,11 @@ class _EchoAiBubble extends StatelessWidget {
   }
 }
 
-class _ReadableAiText extends StatelessWidget {
-  final String text;
-  final Color color;
-  final Color accentColor;
-  final bool compact;
-
-  const _ReadableAiText({
-    required this.text,
-    required this.color,
-    required this.accentColor,
-    required this.compact,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final safeText = sanitizeEchoAiText(text);
-    final lines = safeText
-        .replaceAll('\r\n', '\n')
-        .split('\n')
-        .map((line) => line.trim())
-        .toList();
-
-    if (compact || lines.length == 1) {
-      return Text(_cleanInlineMarkdown(safeText), style: _baseStyle(context));
-    }
-
-    final children = <Widget>[];
-    for (final rawLine in lines) {
-      if (rawLine.isEmpty) {
-        children.add(const SizedBox(height: 8));
-        continue;
-      }
-
-      final line = _cleanInlineMarkdown(rawLine);
-      final bulletMatch = RegExp(r'^[-*]\s+(.+)$').firstMatch(line);
-      final numberMatch = RegExp(r'^(\d+)[.)]\s+(.+)$').firstMatch(line);
-      final heading = _headingText(line);
-
-      if (heading != null) {
-        children.add(
-          Padding(
-            padding: EdgeInsets.only(top: children.isEmpty ? 0 : 10, bottom: 4),
-            child: Text(
-              heading,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w900,
-                height: 1.22,
-              ),
-            ),
-          ),
-        );
-      } else if (bulletMatch != null) {
-        children.add(_BulletLine(text: bulletMatch.group(1)!, color: color));
-      } else if (numberMatch != null) {
-        children.add(
-          _NumberLine(
-            number: numberMatch.group(1)!,
-            text: numberMatch.group(2)!,
-            color: color,
-            accentColor: accentColor,
-          ),
-        );
-      } else {
-        children.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(line, style: _baseStyle(context)),
-          ),
-        );
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
-  }
-
-  TextStyle _baseStyle(BuildContext context) {
-    return TextStyle(
-      color: color,
-      fontSize: 16,
-      height: 1.38,
-      fontWeight: FontWeight.w500,
-    );
-  }
-
-  String _cleanInlineMarkdown(String value) {
-    return value
-        .replaceAll(RegExp(r'\*\*(.*?)\*\*'), r'$1')
-        .replaceAll(RegExp(r'__(.*?)__'), r'$1')
-        .replaceAll(RegExp(r'`([^`]+)`'), r'$1')
-        .trim();
-  }
-
-  String? _headingText(String line) {
-    final headingMatch = RegExp(r'^\s*#{1,4}\s+(.+)$').firstMatch(line);
-    if (headingMatch != null) return headingMatch.group(1);
-    if (line.endsWith(':') && line.length <= 42)
-      return line.substring(0, line.length - 1);
-    return null;
-  }
-}
-
-class _BulletLine extends StatelessWidget {
-  final String text;
-  final Color color;
-
-  const _BulletLine({required this.text, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Container(
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: color,
-                fontSize: 16,
-                height: 1.36,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NumberLine extends StatelessWidget {
-  final String number;
-  final String text;
-  final Color color;
-  final Color accentColor;
-
-  const _NumberLine({
-    required this.number,
-    required this.text,
-    required this.color,
-    required this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 22,
-            height: 22,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: .14),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              number,
-              style: TextStyle(
-                color: accentColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: color,
-                fontSize: 16,
-                height: 1.36,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+String _cleanAiText(String value) {
+  return sanitizeEchoAiText(value)
+      .replaceAll(RegExp(r'\*\*(.*?)\*\*'), r'$1')
+      .replaceAll(RegExp(r'__(.*?)__'), r'$1')
+      .replaceAll(RegExp(r'`([^`]+)`'), r'$1')
+      .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+      .trim();
 }
