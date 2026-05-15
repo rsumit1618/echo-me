@@ -10,10 +10,10 @@ import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/core/widgets/app_state_widgets.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const _developerAdminEmail = 'rsumit1618@gmail.com';
 const _developerDocPath = 'appConfig/developerContact';
@@ -406,42 +406,76 @@ class _DetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        children: [
-          _InfoTile(
-            icon: Icons.mail_outline,
-            title: 'Email',
-            value: contact.email,
+    return Column(
+      children: [
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'About Developer',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Flutter, Firebase, clean architecture, realtime chat, and polished mobile app experiences.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.45,
+                ),
+              ),
+            ],
           ),
-          _InfoTile(
-            icon: Icons.work_outline,
-            title: 'Role',
-            value: contact.title,
+        ),
+        const SizedBox(height: 16),
+        AppCard(
+          child: Column(
+            children: [
+              _InfoTile(
+                icon: Icons.mail_outline,
+                title: 'Email',
+                value: contact.email,
+                actionLabel: 'Email',
+                uri: Uri(scheme: 'mailto', path: contact.email),
+              ),
+              _InfoTile(
+                icon: Icons.work_outline,
+                title: 'Role',
+                value: contact.title,
+              ),
+              _InfoTile(
+                icon: Icons.link,
+                title: 'LinkedIn',
+                value: contact.linkedInUrl.isEmpty
+                    ? 'LinkedIn link will be added soon'
+                    : contact.linkedInUrl,
+                actionLabel: 'Open LinkedIn',
+                uri: _webUri(contact.linkedInUrl),
+              ),
+              _InfoTile(
+                icon: Icons.code,
+                title: 'GitHub',
+                value: contact.githubUrl.isEmpty
+                    ? 'GitHub link will be added soon'
+                    : contact.githubUrl,
+                actionLabel: 'Open GitHub',
+                uri: _webUri(contact.githubUrl),
+              ),
+              _InfoTile(
+                icon: Icons.language,
+                title: 'Portfolio',
+                value: contact.portfolioUrl.isEmpty
+                    ? 'Portfolio link will be added soon'
+                    : contact.portfolioUrl,
+                actionLabel: 'Open Portfolio',
+                uri: _webUri(contact.portfolioUrl),
+              ),
+            ],
           ),
-          _InfoTile(
-            icon: Icons.link,
-            title: 'LinkedIn',
-            value: contact.linkedInUrl.isEmpty
-                ? 'LinkedIn link will be added soon'
-                : contact.linkedInUrl,
-          ),
-          _InfoTile(
-            icon: Icons.code,
-            title: 'GitHub',
-            value: contact.githubUrl.isEmpty
-                ? 'GitHub link will be added soon'
-                : contact.githubUrl,
-          ),
-          _InfoTile(
-            icon: Icons.language,
-            title: 'Portfolio',
-            value: contact.portfolioUrl.isEmpty
-                ? 'Portfolio link will be added soon'
-                : contact.portfolioUrl,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -450,17 +484,23 @@ class _InfoTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
+  final String? actionLabel;
+  final Uri? uri;
 
   const _InfoTile({
     required this.icon,
     required this.title,
     required this.value,
+    this.actionLabel,
+    this.uri,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      onTap: uri == null ? null : () => _launchContactUri(context, uri!),
       leading: Container(
         width: 42,
         height: 42,
@@ -472,17 +512,38 @@ class _InfoTile extends StatelessWidget {
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
       subtitle: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis),
-      trailing: IconButton(
-        tooltip: 'Copy',
-        onPressed: () {
-          Clipboard.setData(ClipboardData(text: value));
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('$title copied.')));
-        },
-        icon: const Icon(Icons.copy),
-      ),
+      trailing: uri == null
+          ? null
+          : IconButton(
+              tooltip: actionLabel ?? 'Open',
+              onPressed: () => _launchContactUri(context, uri!),
+              icon: const Icon(Icons.open_in_new_rounded),
+            ),
     );
+  }
+}
+
+Uri? _webUri(String value) {
+  final clean = value.trim();
+  if (clean.isEmpty) return null;
+  final uri = Uri.tryParse(clean);
+  if (uri == null) return null;
+  if (uri.hasScheme) return uri;
+  return Uri.tryParse('https://$clean');
+}
+
+Future<void> _launchContactUri(BuildContext context, Uri uri) async {
+  var launched = false;
+  try {
+    launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    launched = false;
+  }
+
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Could not open this link.')));
   }
 }
 

@@ -106,59 +106,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              AppCard(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const DeveloperContactScreen(),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        gradient: LinearGradient(
-                          colors: [
-                            Theme.of(context).colorScheme.primary,
-                            const Color(0xFF0EA5E9),
-                          ],
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.engineering_outlined,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Developer Contact',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'View app developer details and links',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 28),
+              _ProfileFooter(onDeveloperTap: _openDeveloperContact),
             ],
           );
         },
@@ -242,6 +191,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) ref.read(profileSavingProvider.notifier).state = false;
     }
   }
+
+  void _openDeveloperContact() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const DeveloperContactScreen()));
+  }
 }
 
 String _encodeProfileImageDataUrl(List<int> bytes) {
@@ -306,6 +261,66 @@ class _Avatar extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileFooter extends StatelessWidget {
+  final VoidCallback onDeveloperTap;
+
+  const _ProfileFooter({required this.onDeveloperTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 20),
+      child: Column(
+        children: [
+          Divider(color: colorScheme.outlineVariant.withValues(alpha: .7)),
+          const SizedBox(height: 12),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              Text(
+                'Terms & Conditions',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text('|', style: TextStyle(color: colorScheme.outline)),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: onDeveloperTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    'Developer Contact',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Echo Me 1.0.0',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
