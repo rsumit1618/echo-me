@@ -83,5 +83,6 @@ FIREBASE_SERVICE_ACCOUNT_JSON=your_firebase_service_account_json
 After deploy, test:
 
 ```text
+https://your-vercel-domain.vercel.app/
 https://your-vercel-domain.vercel.app/api/health
 ```

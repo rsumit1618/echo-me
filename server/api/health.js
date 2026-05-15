@@ -1,4 +1,6 @@
 export default function handler(_, res) {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  return res.status(200).json({ ok: true });
+  res.end(JSON.stringify({ ok: true }));
 }
