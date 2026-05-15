@@ -70,71 +70,85 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
       body: Column(
         children: [
           Expanded(
-            child: Consumer(
-              builder: (context, ref, _) {
-                final messages = ref.watch(messagesProvider(widget.chatId));
-                final uiState =
-                    ref
-                        .watch(messageThreadListUiProvider(widget.chatId))
-                        .valueOrNull ??
-                    controller.listState;
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: .035),
+                    Theme.of(context).scaffoldBackgroundColor,
+                  ],
+                ),
+              ),
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final messages = ref.watch(messagesProvider(widget.chatId));
+                  final uiState =
+                      ref
+                          .watch(messageThreadListUiProvider(widget.chatId))
+                          .valueOrNull ??
+                      controller.listState;
 
-                return messages.when(
-                  data: (items) {
-                    _handleMessageStreamUpdate(items, controller);
-                    final allMessages = _mergeMessages(items, uiState);
-                    final timelineItems = _buildTimelineItems(allMessages);
-                    final canLoadOlder =
-                        uiState.hasMoreOlder &&
-                        (items.length >= _messagePageSize ||
-                            uiState.olderMessages.isNotEmpty);
-                    return allMessages.isEmpty
-                        ? const EmptyStateCard(
-                            icon: Icons.waving_hand_outlined,
-                            title: 'Say hello',
-                            message:
-                                'Send a message or attach an image or PDF.',
-                          )
-                        : ListView.builder(
-                            reverse: true,
-                            controller: _scrollController,
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                            keyboardDismissBehavior:
-                                ScrollViewKeyboardDismissBehavior.onDrag,
-                            cacheExtent: 640,
-                            padding: const EdgeInsets.all(12),
-                            itemCount: timelineItems.length + 1,
-                            itemBuilder: (_, index) {
-                              if (index == timelineItems.length) {
-                                return _LoadOlderButton(
-                                  visible: canLoadOlder,
-                                  loading: uiState.loadingOlder,
-                                  onPressed: () => _loadOlder(allMessages),
+                  return messages.when(
+                    data: (items) {
+                      _handleMessageStreamUpdate(items, controller);
+                      final allMessages = _mergeMessages(items, uiState);
+                      final timelineItems = _buildTimelineItems(allMessages);
+                      final canLoadOlder =
+                          uiState.hasMoreOlder &&
+                          (items.length >= _messagePageSize ||
+                              uiState.olderMessages.isNotEmpty);
+                      return allMessages.isEmpty
+                          ? const EmptyStateCard(
+                              icon: Icons.waving_hand_outlined,
+                              title: 'Say hello',
+                              message:
+                                  'Send a message or attach an image or PDF.',
+                            )
+                          : ListView.builder(
+                              reverse: true,
+                              controller: _scrollController,
+                              physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
+                              ),
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.onDrag,
+                              cacheExtent: 640,
+                              padding: const EdgeInsets.all(12),
+                              itemCount: timelineItems.length + 1,
+                              itemBuilder: (_, index) {
+                                if (index == timelineItems.length) {
+                                  return _LoadOlderButton(
+                                    visible: canLoadOlder,
+                                    loading: uiState.loadingOlder,
+                                    onPressed: () => _loadOlder(allMessages),
+                                  );
+                                }
+                                final item = timelineItems[index];
+                                if (item is _DateTimelineItem) {
+                                  return _DateSeparator(label: item.label);
+                                }
+                                final message =
+                                    (item as _MessageTimelineItem).message;
+                                return _MessageBubble(
+                                  key: ValueKey(message.id),
+                                  message: message,
                                 );
-                              }
-                              final item = timelineItems[index];
-                              if (item is _DateTimelineItem) {
-                                return _DateSeparator(label: item.label);
-                              }
-                              final message =
-                                  (item as _MessageTimelineItem).message;
-                              return _MessageBubble(
-                                key: ValueKey(message.id),
-                                message: message,
-                              );
-                            },
-                          );
-                  },
-                  loading: () => const AppLoadingView(),
-                  error: (error, _) => AppErrorView(
-                    error: error,
-                    onRetry: () =>
-                        ref.invalidate(messagesProvider(widget.chatId)),
-                  ),
-                );
-              },
+                              },
+                            );
+                    },
+                    loading: () => const AppLoadingView(),
+                    error: (error, _) => AppErrorView(
+                      error: error,
+                      onRetry: () =>
+                          ref.invalidate(messagesProvider(widget.chatId)),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
           SafeArea(
@@ -148,6 +162,12 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                           .valueOrNull ??
                       controller.state;
                   return AppCard(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outlineVariant.withValues(alpha: .55),
+                    ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 6,
@@ -164,8 +184,19 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                             controller: _text,
                             minLines: 1,
                             maxLines: 4,
-                            decoration: const InputDecoration(
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 16,
+                              height: 1.25,
+                            ),
+                            cursorColor: Theme.of(context).colorScheme.primary,
+                            decoration: InputDecoration(
                               hintText: 'Message',
+                              hintStyle: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                               border: InputBorder.none,
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
@@ -200,7 +231,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                                   child: IconButton(
                                     tooltip: 'Send',
                                     onPressed: _sendText,
-                                    color: Colors.white,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
                                     icon: const Icon(Icons.send_rounded),
                                   ),
                                 ),
@@ -445,14 +478,23 @@ class _DateSeparator extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 10),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: .86),
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: colorScheme.outlineVariant),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: .7),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: .06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Text(
           label,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -574,70 +616,75 @@ class _MessageBubble extends ConsumerWidget {
     final currentUid = ref.watch(authRepositoryProvider).firebaseUser?.uid;
     final isMe = currentUid == message.senderId;
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bubbleColor = isMe
         ? colorScheme.primaryContainer
-        : colorScheme.surfaceContainerHighest;
-    final textColor = isMe ? Colors.white : colorScheme.onSurfaceVariant;
+        : colorScheme.surface;
+    final textColor = isMe
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurface;
+    final metaColor = isMe
+        ? colorScheme.onPrimaryContainer.withValues(alpha: .72)
+        : colorScheme.onSurfaceVariant;
     final receiptColor = isMe
-        ? Colors.white.withValues(
-            alpha: message.state == MessageState.read ? .95 : .68,
+        ? colorScheme.onPrimaryContainer.withValues(
+            alpha: message.state == MessageState.read ? .92 : .66,
           )
         : message.state == MessageState.read
         ? colorScheme.primary
-        : textColor.withValues(alpha: .65);
+        : colorScheme.onSurfaceVariant;
+    final borderColor = isMe
+        ? colorScheme.primary.withValues(alpha: isDark ? .34 : .22)
+        : colorScheme.outlineVariant.withValues(alpha: isDark ? .36 : .6);
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * .78,
+          maxWidth: MediaQuery.sizeOf(context).width * .8,
         ),
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
+          margin: const EdgeInsets.symmetric(vertical: 5),
           decoration: BoxDecoration(
-            color: isMe ? null : bubbleColor,
-            gradient: isMe
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [colorScheme.primary, const Color(0xFF0EA5E9)],
-                  )
-                : null,
+            color: bubbleColor,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(18),
               topRight: const Radius.circular(18),
               bottomLeft: Radius.circular(isMe ? 18 : 4),
               bottomRight: Radius.circular(isMe ? 4 : 18),
             ),
-            border: Border.all(
-              color: isMe
-                  ? Colors.white.withValues(alpha: .16)
-                  : colorScheme.outlineVariant.withValues(alpha: .45),
-            ),
+            border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: colorScheme.shadow.withValues(
-                  alpha: Theme.of(context).brightness == Brightness.dark
-                      ? .16
-                      : .08,
-                ),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
+                color: colorScheme.shadow.withValues(alpha: isDark ? .22 : .07),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 10, 6),
+            padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (isMe)
+                  Container(
+                    width: 26,
+                    height: 3,
+                    margin: const EdgeInsets.only(bottom: 7),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: .42),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
                 if (message.text != null)
                   Text(
                     message.text!,
                     style: TextStyle(
                       color: textColor,
                       fontSize: 16,
-                      height: 1.25,
+                      height: 1.32,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 if (message.attachments.isNotEmpty)
@@ -656,7 +703,8 @@ class _MessageBubble extends ConsumerWidget {
                       Text(
                         DateFormat.Hm().format(message.createdAt),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: textColor.withValues(alpha: .7),
+                          color: metaColor,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       if (isMe) ...[
@@ -764,13 +812,15 @@ class _AttachmentPreview extends StatelessWidget {
     }
 
     if (attachment.isImage) {
+      final colorScheme = Theme.of(context).colorScheme;
       return Container(
         width: 220,
         height: 160,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colorScheme.outlineVariant),
         ),
         child: const CircularProgressIndicator(strokeWidth: 2),
       );
@@ -851,6 +901,7 @@ class _PdfAttachmentPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base64Data = attachment.base64Data;
+    final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: base64Data == null ? null : () => _openPdf(context, attachment),
@@ -858,12 +909,13 @@ class _PdfAttachmentPreview extends StatelessWidget {
         width: 250,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colorScheme.outlineVariant),
         ),
         child: Row(
           children: [
-            const Icon(Icons.picture_as_pdf, size: 34),
+            Icon(Icons.picture_as_pdf, size: 34, color: colorScheme.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -873,9 +925,15 @@ class _PdfAttachmentPreview extends StatelessWidget {
                     attachment.fileName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  Text(_formatBytes(attachment.sizeBytes)),
+                  Text(
+                    _formatBytes(attachment.sizeBytes),
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                  ),
                 ],
               ),
             ),
