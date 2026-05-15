@@ -217,7 +217,10 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isSelf(uid);
+      // Signed-in users need to read peer profiles for contact/chat avatars,
+      // phone display, online status, typing/active-chat presence, and last seen.
+      // Writes remain owner-only below.
+      allow read: if signedIn();
       allow create: if isSelf(uid) && validUserProfile(uid);
       allow update: if isSelf(uid) && validPartialUserUpdate(uid);
       allow delete: if false;
