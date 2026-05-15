@@ -1,5 +1,6 @@
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/features/echo_ai/echo_ai_advisor.dart';
+import 'package:echo_me/features/echo_ai/echo_ai_advisor_icon.dart';
 import 'package:flutter/material.dart';
 
 class EchoAiChatScreen extends StatelessWidget {
@@ -15,15 +16,7 @@ class EchoAiChatScreen extends StatelessWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: LinearGradient(colors: advisor.colors),
-              ),
-              child: Icon(advisor.icon, color: Colors.white, size: 20),
-            ),
+            EchoAiAdvisorIcon(advisor: advisor, size: 38, iconSize: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

@@ -1,5 +1,6 @@
 import 'package:echo_me/core/widgets/app_card.dart';
 import 'package:echo_me/features/echo_ai/echo_ai_advisor.dart';
+import 'package:echo_me/features/echo_ai/echo_ai_advisor_icon.dart';
 import 'package:echo_me/features/echo_ai/echo_ai_chat_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -144,7 +145,7 @@ class _AdvisorTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _AdvisorAvatar(advisor: advisor),
+          EchoAiAdvisorIcon(advisor: advisor, size: 58, iconSize: 28),
           const SizedBox(width: 13),
           Expanded(
             child: Column(
@@ -215,36 +216,6 @@ class _AdvisorTile extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _AdvisorAvatar extends StatelessWidget {
-  final EchoAiAdvisor advisor;
-
-  const _AdvisorAvatar({required this.advisor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 58,
-      height: 58,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: advisor.colors,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: advisor.colors.first.withValues(alpha: .24),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Icon(advisor.icon, color: Colors.white, size: 28),
     );
   }
 }
