@@ -105,6 +105,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 28),
+              const _ProfileFooter(),
             ],
           );
         },
@@ -252,6 +254,46 @@ class _Avatar extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileFooter extends StatelessWidget {
+  const _ProfileFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 20),
+      child: Column(
+        children: [
+          Divider(color: colorScheme.outlineVariant.withValues(alpha: .7)),
+          const SizedBox(height: 12),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              Text(
+                'Terms & Conditions',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Echo Me 1.0.0',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

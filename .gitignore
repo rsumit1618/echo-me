@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Node backend secrets and generated files
+/server/.env
+/server/.env.*
+!/server/.env.example
+/server/node_modules/
+/server/dist/
+/server/coverage/
+/server/npm-debug.log*
+/server/yarn-debug.log*
+/server/yarn-error.log*
