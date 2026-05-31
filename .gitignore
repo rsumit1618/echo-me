@@ -45,6 +45,12 @@ app.*.map.json
 /android/app/release
 
 # Node backend secrets and generated files
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 /server/.env
 /server/.env.*
 !/server/.env.example
@@ -54,3 +60,28 @@ app.*.map.json
 /server/npm-debug.log*
 /server/yarn-debug.log*
 /server/yarn-error.log*
+
+# Firebase and Google service files that can contain project API keys or
+# service account material. Keep local copies, commit only sanitized examples.
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+firebase_service_account*.json
+*service-account*.json
+*service_account*.json
+
+# Android/iOS signing credentials and local provisioning files
+android/key.properties
+**/key.properties
+**/*.keystore
+**/*.jks
+**/*.p12
+**/*.pem
+**/*.key
+**/*.mobileprovision
+**/*.cer
+
+# Generated release artifacts
+*.apk
+*.aab
+*.ipa
