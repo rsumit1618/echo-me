@@ -60,7 +60,13 @@ class AppTheme {
         foregroundColor: gold,
       ),
       navigationBarTheme: NavigationBarThemeData(
+        height: 72,
+        backgroundColor: panel.withValues(alpha: .94),
+        shadowColor: Colors.black.withValues(alpha: .18),
         indicatorColor: gold.withValues(alpha: .18),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
         labelTextStyle: WidgetStateProperty.all(
           const TextStyle(fontWeight: FontWeight.w600),
         ),
